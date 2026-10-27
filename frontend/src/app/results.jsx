@@ -5,9 +5,11 @@ import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } fr
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, call } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
+import { goBack } from "../lib/nav";
 import { searchRides } from "../lib/api";
 import { OFFICES } from "../lib/mock";
-import { bookRide, useTrips } from "../lib/trips";
+import { bookRide, confirmWithdraw, myPickup, useTrips } from "../lib/trips";
+import { useArea } from "../lib/useArea";
 import { nearbyTimes } from "../lib/when";
 
 const SORTS = [
@@ -81,7 +83,7 @@ function FilterSheet({ value, onDone, onClose }) {
   );
 }
 
-function HostCard({ host, requested, onRequest }) {
+function HostCard({ host, requested, onRequest, officeId }) {
   const { colors, spacing, fontSize, radius } = useTheme();
   const vehicleIcon = host.type === "bike" ? "motorbike" : "car";
   const leg = (icon, text, mc) => (
@@ -122,7 +124,7 @@ function HostCard({ host, requested, onRequest }) {
       </View>
 
       <Pressable
-        onPress={() => router.push({ pathname: "/pickup-map", params: { id: host.id } })}
+        onPress={() => router.push({ pathname: "/pickup-map", params: { id: host.id, office: officeId } })}
         accessibilityRole="button"
         accessibilityLabel={`Walk ${host.walkTo}, ride ${host.ride}, walk ${host.walkFrom}. Show pickup on map`}
         style={({ pressed }) => ({ borderWidth: 1.5, borderColor: colors.line, borderRadius: radius.lg, padding: spacing.sm + 2, alignItems: "center", gap: spacing.sm, opacity: pressed ? 0.7 : 1 })}
@@ -186,6 +188,7 @@ export default function Results() {
   const { colors, spacing, fontSize, radius } = useTheme();
   const { to, when = "Tomorrow · 9:00 AM" } = useLocalSearchParams();
   const { booking, places, published } = useTrips();
+  const area = useArea();
   const pickup = places.pickup?.name ?? "Current location";
   // Which end of the trip is an office: the drop (to office) or the pickup (from office to a place).
   const toIndex = officeIndex(to);
@@ -218,10 +221,21 @@ export default function Results() {
   function request(hostId) {
     if (pending === hostId) return router.push("/requested");
     if (published) return Alert.alert("You’re hosting a ride", "Finish or cancel your published ride before booking a seat.");
-    if (booking && ["requested", "accepted"].includes(booking.status)) {
-      return Alert.alert("You already have a ride", "Withdraw or cancel your current one first.");
+    const first = booking?.host.name.split(" ")[0];
+    if (booking?.status === "requested") {
+      return Alert.alert(`You’ve already asked ${first}`, "You can have one seat request at a time. Withdraw it to ask someone else.", [
+        { text: "Close", style: "cancel" },
+        { text: "View request", onPress: () => router.push("/requested") },
+        { text: "Withdraw", style: "destructive", onPress: () => confirmWithdraw() },
+      ]);
     }
-    bookRide(hostId);
+    if (booking?.status === "accepted") {
+      return Alert.alert(`You’re riding with ${first}`, "Cancel that ride first if you want to book a different one.", [
+        { text: "Close", style: "cancel" },
+        { text: "View ride", onPress: () => router.push("/accepted") },
+      ]);
+    }
+    bookRide(hostId, side === "to" ? OFFICES[office] : OFFICES[0], myPickup(area));
     router.push("/requested");
   }
 
@@ -229,7 +243,7 @@ export default function Results() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={goBack}
           accessibilityRole="button"
           accessibilityLabel="Go back"
           style={{ width: 38, height: 38, borderRadius: radius.md + 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}
@@ -284,7 +298,7 @@ export default function Results() {
             ))}
           </View>
         ) : null}
-        {hosts === null ? <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.text} /> : shown.map((h) => <HostCard key={h.id} host={h} requested={pending === h.id} onRequest={() => request(h.id)} />)}
+        {hosts === null ? <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.text} /> : shown.map((h) => <HostCard key={h.id} host={h} requested={pending === h.id} onRequest={() => request(h.id)} officeId={officeId} />)}
         {hosts && !hosts.length ? (
           <View style={{ alignItems: "center", gap: spacing.md, marginTop: spacing.xl * 2, paddingHorizontal: spacing.md }}>
             <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>

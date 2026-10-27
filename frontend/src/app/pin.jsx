@@ -8,11 +8,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NoMapToken } from "../components/LiveMap";
 import { MapSheet, RoundButton } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
+import { goBack } from "../lib/nav";
 import { hasMapboxToken, MAP_STYLES } from "../lib/mapbox";
-import { PLACES } from "../lib/mock";
+import { MEET_POINT } from "../lib/mock";
 import { placeName, setPlace } from "../lib/trips";
 
-const FALLBACK = PLACES.find((p) => p.name.startsWith("HSR")).coords;
+const FALLBACK = MEET_POINT.coords;
 const TITLES = { pickup: "Confirm pickup", from: "Confirm start", to: "Confirm destination" };
 
 // Drop a pin: move the map under the fixed pin, then confirm. Opened from the places screen.
@@ -28,7 +29,7 @@ export default function Pin() {
   const camera = useRef(null);
   const [located, setLocated] = useState(false); // location allowed: show the blue dot
 
-  // Start at the phone's last known position (no permission prompt here; falls back to HSR Layout).
+  // Start at the phone's last known position (no permission prompt here; falls back to the example meet point).
   useEffect(() => {
     const begin = (lngLat) => {
       setStart(lngLat);
@@ -99,7 +100,7 @@ export default function Pin() {
           </View>
         </View>
         <View style={{ position: "absolute", top: insets.top + spacing.sm, left: spacing.md }}>
-          <RoundButton icon="arrow-back" label="Go back" onPress={() => router.back()} />
+          <RoundButton icon="arrow-back" label="Go back" onPress={goBack} />
         </View>
         <View style={{ position: "absolute", bottom: spacing.md, right: spacing.md }}>
           <RoundButton icon="locate" label="Use my current location" color={colors.primary} onPress={goToMe} />

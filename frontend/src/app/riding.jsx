@@ -6,28 +6,32 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
 import { ActionRow, Avatar, call, EtaCard, MapSheet, Plate, RoundButton, shareTrip, SosButton, Stops } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
-import { HOSTS, OFFICES, PICKUP_INDEX, ROUTE } from "../lib/mock";
-import { lengthKm } from "../lib/route";
+import { arriveAt, useMeetRoute } from "../lib/directions";
+import { HOSTS, MEET_POINT, OFFICES } from "../lib/mock";
 import { clearBooking, getTrips } from "../lib/trips";
 import { useMovement } from "../lib/useMovement";
-
-const TO_OFFICE = ROUTE.slice(PICKUP_INDEX);
-const ALREADY = ROUTE.slice(0, PICKUP_INDEX + 1);
-const KM = lengthKm(TO_OFFICE);
-const PINS = [
-  { id: "start", kind: "start", coords: ROUTE[PICKUP_INDEX] },
-  { id: "office", kind: "office", coords: OFFICES[0].coords },
-];
 
 // On the way to the office after pickup.
 export default function Riding() {
   const { colors, spacing, fontSize, radius } = useTheme();
   const insets = useSafeAreaInsets();
-  const h = getTrips().booking?.host ?? HOSTS[0];
+  const booking = getTrips().booking;
+  const h = booking?.host ?? HOSTS[0];
+  const pickup = booking?.pickup ?? MEET_POINT;
+  const drop = booking?.drop ?? OFFICES[0];
   const [arrived, setArrived] = useState(false);
-  const move = useMovement(TO_OFFICE, 25000, { onArrive: () => setArrived(true) });
-  const kmLeft = KM * (1 - move.t);
-  const mins = Math.max(1, Math.round(kmLeft / 0.4));
+  // From the meet point on the host's route to the office, with traffic.
+  const plan = useMeetRoute(h.start, drop.coords, pickup.coords);
+  const leg = plan?.fromMeet;
+  // shortcut: simulated movement along the real route; the backend will send the car's live position.
+  const move = useMovement(leg?.coords ?? null, 25000, { onArrive: () => setArrived(true) });
+  const kmLeft = leg ? leg.km * (1 - move.t) : 0;
+  const mins = leg ? Math.max(1, Math.round(leg.minutes * (1 - move.t))) : "–";
+  const eta = leg ? arriveAt(leg.minutes * (1 - move.t)) : "";
+  const pins = [
+    { id: "start", kind: "start", coords: plan?.meet ?? pickup.coords },
+    { id: "office", kind: "office", coords: drop.coords },
+  ];
 
   function done() {
     clearBooking();
@@ -37,14 +41,19 @@ export default function Riding() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <LiveMap route={ROUTE} done={[...ALREADY, ...move.done]} pins={PINS} vehicle={{ point: move.point, heading: move.heading, type: h.type }} />
+        <LiveMap route={leg?.coords} done={leg ? move.done : null} pins={pins} vehicle={leg ? { point: move.point, heading: move.heading, type: h.type } : null} />
       </View>
       <View style={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.md }}>
-        <EtaCard big={arrived ? "0" : mins} title={arrived ? "You've arrived" : "To Perficient Bellandur"} subtitle={arrived ? "Have a good day at work" : `Arrive 9:15 AM · ${kmLeft.toFixed(1)} km left`} live={!arrived} />
+        <EtaCard
+          big={arrived ? "0" : mins}
+          title={arrived ? "You’ve arrived" : `To ${drop.name}`}
+          subtitle={arrived ? "Have a good day at work" : leg ? `Arrive ${eta} · ${kmLeft.toFixed(1)} km left` : "Finding the route…"}
+          live={!arrived}
+        />
       </View>
       <View style={{ position: "absolute", right: spacing.md, top: insets.top + 110, gap: spacing.sm }}>
         <SosButton />
-        <RoundButton icon="share-outline" label="Share trip" onPress={() => shareTrip(`I'm riding with ${h.name} (${h.plate}) to Perficient Bellandur, arriving about 9:15 AM.`)} />
+        <RoundButton icon="share-outline" label="Share trip" onPress={() => shareTrip(`I’m riding with ${h.name} (${h.plate}) to ${drop.name}${eta ? `, arriving about ${eta}` : ""}.`)} />
       </View>
 
       <View style={{ flex: 1 }} />
@@ -62,8 +71,8 @@ export default function Riding() {
         </View>
         <Stops
           stops={[
-            { title: "Picked up · HSR Layout", time: h.time, done: true },
-            { title: "Drop · Perficient Bellandur", time: "9:15", done: arrived },
+            { title: "Picked up at the meet point", time: h.time, done: true },
+            { title: `Drop · ${drop.name}`, time: eta.replace(/ (AM|PM)$/, ""), done: arrived },
           ]}
         />
         {arrived ? (

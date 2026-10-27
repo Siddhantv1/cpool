@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { along } from "./route";
 
-// Moves a point along `coords` over `durationMs`.
+// Moves a point along `coords` over `durationMs`. Pass null coords to wait (e.g. while the route loads).
 // shortcut: simulated movement for the demo; replace with the host's real location from GET /v1/rides/{id}/live every 5 s.
 export function useMovement(coords, durationMs, { onNear, nearAt = 0.8, onArrive } = {}) {
   const [t, setT] = useState(0);
@@ -12,6 +12,7 @@ export function useMovement(coords, durationMs, { onNear, nearAt = 0.8, onArrive
   });
 
   useEffect(() => {
+    if (!coords) return;
     fired.current = { near: false, arrive: false };
     const start = Date.now();
     const id = setInterval(() => {
@@ -32,5 +33,5 @@ export function useMovement(coords, durationMs, { onNear, nearAt = 0.8, onArrive
     return () => clearInterval(id);
   }, [coords, durationMs, nearAt]);
 
-  return { t, ...along(coords, t) };
+  return coords ? { t, ...along(coords, t) } : { t: 0, point: null, heading: 0, done: [] };
 }

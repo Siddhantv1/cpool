@@ -47,3 +47,10 @@ export function boundsOf(points) {
 }
 
 export const lineFeature = (coords) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords } });
+
+// Index of the route point closest to p (where a guest joins the host's route).
+export function nearestIndex(coords, p) {
+  let best = 0;
+  for (let i = 1; i < coords.length; i++) if (km(coords[i], p) < km(coords[best], p)) best = i;
+  return best;
+}

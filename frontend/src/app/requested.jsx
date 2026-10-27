@@ -1,12 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Redirect, router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
+import { router } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar, call, Plate, Stops } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
+import { goBack } from "../lib/nav";
 import { playAlert } from "../lib/alerts";
-import { clearBooking, declineBooking, useTrips, withdrawBooking } from "../lib/trips";
+import { clockPlus, useRoute } from "../lib/directions";
+import { confirmWithdraw, declineBooking, useTrips } from "../lib/trips";
 
 // Waiting for the host to answer a seat request.
 export default function Requested() {
@@ -14,6 +16,7 @@ export default function Requested() {
   const { booking } = useTrips();
   const [seconds, setSeconds] = useState(0);
   const [pulse] = useState(() => new Animated.Value(0));
+  const ride = useRoute(booking ? [booking.pickup.coords, booking.drop.coords] : null);
 
   useEffect(() => {
     const loop = Animated.loop(Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }));
@@ -25,31 +28,24 @@ export default function Requested() {
     };
   }, [pulse]);
 
-  // The host answered while this screen is open.
+  // Leave exactly once when the request stops waiting (accepted, withdrawn, declined).
+  // Navigating twice at the same time (back + redirect) left a blank white screen.
   const status = booking?.status;
+  const leaving = useRef(false);
   useEffect(() => {
+    if (leaving.current || status === "requested") return;
+    leaving.current = true;
     if (status === "accepted") router.replace("/accepted");
+    else if (router.canGoBack()) router.back();
+    else router.replace("/home");
   }, [status]);
 
-  if (!booking || booking.status !== "requested") return status === "accepted" ? null : <Redirect href="/home" />;
+  if (status !== "requested") return null;
   const h = booking.host;
   const firstName = h.name.split(" ")[0];
   const waited = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 
-  function withdraw() {
-    Alert.alert("Withdraw your request?", `${firstName} won't see it any more.`, [
-      { text: "Keep waiting", style: "cancel" },
-      {
-        text: "Withdraw",
-        style: "destructive",
-        onPress: () => {
-          withdrawBooking();
-          clearBooking();
-          router.back();
-        },
-      },
-    ]);
-  }
+  const withdraw = () => confirmWithdraw();
 
   const step = (done, active, title, subtitle) => (
     <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
@@ -66,7 +62,7 @@ export default function Requested() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" style={{ width: 38, height: 38, borderRadius: radius.md + 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+        <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel="Go back" style={{ width: 38, height: 38, borderRadius: radius.md + 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="chevron-back" size={20} color={colors.text} />
         </Pressable>
       </View>
@@ -110,8 +106,8 @@ export default function Requested() {
           </View>
           <Stops
             stops={[
-              { title: "HSR Layout · 27th Main", subtitle: `Pickup · ${h.walkTo} walk`, time: h.time },
-              { title: "Perficient Bellandur", subtitle: "Drop", time: "9:15" },
+              { title: booking.pickup.name, subtitle: "Pickup", time: h.time },
+              { title: booking.drop.name, subtitle: "Drop", time: ride ? clockPlus(h.time, ride.minutes) : "" },
             ]}
           />
         </View>
@@ -130,6 +126,7 @@ export default function Requested() {
           // Development only: shows the "request declined" screen without a backend.
           <Pressable
             onPress={() => {
+              leaving.current = true;
               declineBooking();
               playAlert("cancelled");
               router.replace({ pathname: "/cancelled", params: { kind: "declined" } });

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTheme } from "../constants/theme";
+import { goBack } from "../lib/nav";
 import { newSearchSession, retrievePlace, searchPlaces } from "../lib/api";
 import { OFFICES } from "../lib/mock";
 import { isOffice, placeName, setPlace, useTrips } from "../lib/trips";
@@ -97,7 +98,7 @@ export default function Places() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }} keyboardShouldPersistTaps="handled">
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.sm }}>
-          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={10}>
+          <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={10}>
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </Pressable>
           <Text style={{ color: colors.text, fontSize: fontSize.lg, fontWeight: "800" }}>{TITLES[pick] ?? "Plan your ride"}</Text>
