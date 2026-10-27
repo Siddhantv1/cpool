@@ -34,9 +34,25 @@
         "expo-image-picker",
         {
           "photosPermission": "Cpool needs your photos so you can choose a picture of your RC.",
-          "cameraPermission": "Cpool needs the camera so you can take a picture of your RC."
+          "cameraPermission": "Cpool needs the camera so you can take a picture of your RC.",
+          "microphonePermission": false
         }
-      ]
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Cpool uses your location to show rides near you and your pickup point."
+        }
+      ],
+      "@rnmapbox/maps"
     ],
     "experiments": {
       "typedRoutes": false,

@@ -11,6 +11,8 @@ Android and iOS, built with Expo (React Native, JavaScript).
 
 ## Run
 
+Maps use Mapbox. Copy `.env.example` to `.env` and paste your Mapbox public token (`pk.…`). `.env` is git-ignored; never commit a token.
+
 ```bash
 npm install
 npx expo run:android      # first time, or after adding a package with native code
@@ -23,14 +25,19 @@ Expo Go is not supported; use the development build that `expo run:android` inst
 
 ```
 src/
-├── app/              screens (Expo Router: every file is a route)
-│   ├── _layout.jsx   root layout
-│   ├── (auth)/       welcome, sign up, sign in, forgot password, code, password
-│   └── index.jsx     home
-├── components/       reusable UI
-├── constants/        theme.js: all colors, spacing and font sizes
-└── lib/              api.js: all backend calls; session.js: signed-in user
-assets/images/        app icon and splash screen
+├── app/                  screens (Expo Router: every file is a route)
+│   ├── (auth)/           welcome, sign up, sign in, forgot password, code, password
+│   ├── (onboarding)/     role, vehicle type, helmet, seats, RC, vehicle details
+│   ├── (tabs)/           home, my rides, alerts, account (bottom tabs)
+│   ├── places · pin · results · pickup-map   plan your ride, drop a pin, rides available, pickup on map
+│   ├── requested · accepted · cancel-booking · cancelled   seat request and ride status screens
+│   ├── coming · riding · request · drive                   live map screens
+│   ├── edit-profile      photo, name, gender
+│   └── index.jsx         sends you to welcome, role or home
+├── components/           LiveMap (Mapbox), RideUI, StatusHeader, WhenSheet, OfflineGate, buttons, fields
+├── constants/theme.js    all colors, spacing, font sizes, light/dark/system appearance
+└── lib/                  api (incl. Mapbox place search), mapbox, session, trips, when (dates), mock data, route maths, alerts (sound + vibration)
+assets/                   icons, splash, onboarding photos, sounds
 ```
 
 ## Scripts
@@ -67,5 +74,7 @@ All routes except auth need `Authorization: Bearer <token>`.
 | POST | `/v1/bookings/{id}/accept` · `reject` · `cancel` · `picked-up` · `no-show` | booking actions |
 | POST / GET | `/v1/rides/{id}/locations` · `/v1/rides/{id}/live` | send location · read live position |
 | POST | `/v1/rides/{id}/sos` | raise SOS |
+
+Place search ("Where to?") calls the Mapbox Search Box API directly from the app with the public token, so the backend doesn't need a search route.
 
 If an API shape changes, update this table first so the app and the backend stay in sync.

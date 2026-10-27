@@ -25,10 +25,10 @@ export default function Login() {
     setLoading(true);
     try {
       const { token, role, vehicle } = await login(email.trim(), password);
-      setSession({ email: email.trim().toLowerCase(), token, role, vehicle });
+      setSession({ email: email.trim().toLowerCase(), token, role, vehicle, vehicles: vehicle ? [vehicle] : [] });
       if (router.canDismiss()) router.dismissAll();
       // First sign-in (no role yet) goes to first-time setup.
-      router.replace(role ? "/" : "/role");
+      router.replace(role ? "/home" : "/role");
     } catch (e) {
       if (e.code === "not_registered") setNotRegistered(true);
       else setError(e.message);
