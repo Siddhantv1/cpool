@@ -67,27 +67,8 @@ function AlertIcon({ alert }) {
   );
 }
 
-// Red "Remove" strip shown behind an alert while it is swiped away (either direction, like phone notifications).
-function RemoveStrip({ width, side }) {
-  const { colors, spacing, radius } = useTheme();
-  return (
-    <View
-      style={{
-        width,
-        borderRadius: radius.lg + 2,
-        backgroundColor: colors.danger,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: side === "left" ? "flex-start" : "flex-end",
-        gap: spacing.sm,
-        paddingHorizontal: spacing.lg,
-      }}
-    >
-      <Ionicons name="trash-outline" size={20} color={colors.onImage} />
-      <Text style={{ color: colors.onImage, fontWeight: "800" }}>Remove</Text>
-    </View>
-  );
-}
+// Empty space behind an alert while it is swiped away, so it just slides off and disappears.
+const SwipeSpace = ({ width }) => <View style={{ width }} />;
 
 function SmallButton({ title, onPress, kind = "plain" }) {
   const { colors, spacing, radius } = useTheme();
@@ -202,23 +183,6 @@ export default function Alerts() {
             </Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{unread ? `${unread} new` : "You’re up to date"}</Text>
           </View>
-          {unread ? (
-            <Pressable
-              onPress={() => markRead()}
-              accessibilityRole="button"
-              accessibilityLabel="Mark all as read"
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: colors.surface,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Ionicons name="checkmark-done" size={20} color={colors.text} />
-            </Pressable>
-          ) : null}
           <Pressable
             onPress={() => router.push("/account")}
             accessibilityRole="button"
@@ -333,8 +297,8 @@ export default function Alerts() {
                   rightThreshold={72}
                   overshootLeft={false}
                   overshootRight={false}
-                  renderLeftActions={() => <RemoveStrip width={rowWidth} side="left" />}
-                  renderRightActions={() => <RemoveStrip width={rowWidth} side="right" />}
+                  renderLeftActions={() => <SwipeSpace width={rowWidth} />}
+                  renderRightActions={() => <SwipeSpace width={rowWidth} />}
                   onSwipeableWillOpen={() => dismiss(a.id)}
                   // Clip the red strip to the card's rounded shape so it never peeks out at the corners.
                   containerStyle={{ borderRadius: radius.lg + 2, overflow: "hidden" }}

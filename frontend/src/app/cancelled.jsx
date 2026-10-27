@@ -41,8 +41,8 @@ export default function Cancelled() {
           <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>RIDE DETAILS</Text>
           <Stops
             stops={[
-              { title: "HSR Layout · 27th Main", subtitle: "Pickup", time: host.time },
-              { title: "Perficient Bellandur", subtitle: "Drop", time: "9:15" },
+              { title: booking?.pickup?.name ?? "Pickup", subtitle: "Pickup", time: host.time },
+              { title: booking?.drop?.name ?? "Office", subtitle: "Drop", time: "" },
             ]}
           />
           <View style={{ flexDirection: "row", gap: spacing.sm + 2, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }}>

@@ -1,11 +1,12 @@
 // Ride state on this phone (bookings as a guest, published ride and requests as a host).
 // shortcut: kept in memory and filled with example data, replace with API calls + push updates when the backend is ready.
 import { useEffect, useState } from "react";
+import { Alert } from "react-native";
 import { playAlert } from "./alerts";
-import { ALERTS, HOME, HOSTS, OFFICES, REQUESTS } from "./mock";
+import { ALERTS, HOME, HOSTS, MEET_POINT, OFFICES, REQUESTS } from "./mock";
 
 let state = {
-  booking: null, // guest: { host, status: "requested" | "accepted" | "declined" | "cancelled" (by host) | "withdrawn" (by you), reason }
+  booking: null, // guest: { host, pickup, drop, status: "requested" | "accepted" | "declined" | "cancelled" (by host) | "withdrawn" (by you), reason }
   published: null, // host: { from, to, when }
   requests: [], // host: pending seat requests
   passenger: null, // host: accepted request (shown as "Next ride")
@@ -35,7 +36,7 @@ function set(changes) {
 // Every Cpool trip starts or ends at a Perficient office.
 export const isOffice = (p) => !!p && OFFICES.some((o) => o.id === p.id || o.name === p.name);
 
-// "Home · Electronic City" for home, otherwise the place name.
+// "Home · BTM Layout 2nd Stage" for home, otherwise the place name.
 export const placeName = (p) => (p.id === "home" ? `Home · ${p.area}` : p.name);
 // key: "pickup" | "from" | "to" for a ride, or "home" | "office" for saved places.
 export function setPlace(key, place) {
@@ -60,8 +61,16 @@ const guestWho = (r) => ({ initials: r.initials, color: "#7C3AED" });
 
 // ----- guest -----
 let answerTimer = null;
-export function bookRide(hostId) {
-  set({ booking: { host: hostById(hostId), status: "requested", at: Date.now() } });
+// Where you'll be picked up: the pickup you chose, else where you are now (area from useArea), else the example meet point.
+export function myPickup(area) {
+  if (state.places.pickup?.coords) return state.places.pickup;
+  if (area?.coords) return { name: area.label, area: "Your location", coords: area.coords, here: true };
+  return MEET_POINT;
+}
+
+// drop: the office you're going to; pickup: from myPickup().
+export function bookRide(hostId, drop = OFFICES[0], pickup = myPickup()) {
+  set({ booking: { host: hostById(hostId), pickup, drop, status: "requested", at: Date.now() } });
   // shortcut: the example host accepts after 8 s; really the answer arrives as a push notification from the backend.
   answerTimer = setTimeout(() => {
     acceptBooking();
@@ -74,7 +83,7 @@ function setBooking(status, kind, title, text, reason) {
   set({ booking: { ...state.booking, status, reason }, alerts: [alert(kind, title, text, { who: hostWho(state.booking.host), cta: ["declined", "cancelled"].includes(status) ? "find" : undefined }), ...state.alerts] });
 }
 const acceptBooking = () =>
-  state.booking && setBooking("accepted", "accepted", `${first(state.booking.host.name)} accepted your request`, `Tomorrow ${state.booking.host.time} AM · pickup at HSR Layout`);
+  state.booking && setBooking("accepted", "accepted", `${first(state.booking.host.name)} accepted your request`, `Tomorrow ${state.booking.host.time} AM · meet near ${state.booking.pickup.name}`);
 export const declineBooking = () =>
   state.booking && setBooking("declined", "declined", `${first(state.booking.host.name)} couldn't take you`, "Your seat request was declined. Try another ride.");
 export const cancelBooking = () =>
@@ -85,6 +94,23 @@ export function withdrawBooking(reason) {
   const wasAccepted = state.booking.status === "accepted";
   setBooking("withdrawn", "cancelled", wasAccepted ? `You cancelled your ride with ${first(state.booking.host.name)}` : "You withdrew your seat request", reason ?? "Request withdrawn", reason);
 }
+// Asks before withdrawing a seat request that is still waiting for the host.
+export function confirmWithdraw(onDone) {
+  const first = state.booking?.host.name.split(" ")[0] ?? "The host";
+  Alert.alert("Withdraw your request?", `${first} won’t see it any more.`, [
+    { text: "Keep waiting", style: "cancel" },
+    {
+      text: "Withdraw",
+      style: "destructive",
+      onPress: () => {
+        withdrawBooking();
+        clearBooking();
+        onDone?.();
+      },
+    },
+  ]);
+}
+
 export function clearBooking() {
   clearTimeout(answerTimer);
   set({ booking: null });

@@ -14,7 +14,8 @@ export default function CancelBooking() {
   const { booking } = useTrips();
   const [reason, setReason] = useState(null);
   const [note, setNote] = useState("");
-  if (!booking || booking.status !== "accepted") return <Redirect href="/home" />;
+  if (!booking) return <Redirect href="/home" />;
+  if (booking.status !== "accepted") return null; // on the way to the Cancelled screen
   const firstName = booking.host.name.split(" ")[0];
   const other = reason === "Something else";
   const ready = reason && (!other || note.trim().length >= 3);

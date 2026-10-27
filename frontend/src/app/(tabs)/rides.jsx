@@ -11,6 +11,7 @@ export default function MyRides() {
   const { colors, spacing, fontSize, radius } = useTheme();
   const { booking, passenger, published } = useTrips();
   const upcoming = booking?.status === "accepted";
+  const waiting = booking?.status === "requested";
 
   const card = (children, onPress) => (
     <Pressable onPress={onPress} accessibilityRole="button" style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 2, padding: spacing.md, gap: spacing.sm }}>
@@ -24,19 +25,32 @@ export default function MyRides() {
         <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xl - 4, fontWeight: "800" }}>My rides</Text>
 
         <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>UPCOMING</Text>
-        {!upcoming && !passenger && !published ? (
+        {!upcoming && !waiting && !passenger && !published ? (
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: 4 }}>
             <Text style={{ color: colors.text, fontWeight: "700" }}>No upcoming rides</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Find a ride or offer one from Home.</Text>
           </View>
         ) : null}
+        {waiting
+          ? card(
+              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                <Avatar initials={booking.host.initials} color={booking.host.color} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.warning, fontWeight: "700" }}>Waiting for {booking.host.name.split(" ")[0]} to accept</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Tomorrow · {booking.host.time} AM · {booking.pickup.name} → {booking.drop.short ?? booking.drop.name}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </View>,
+              () => router.push("/requested"),
+            )
+          : null}
         {upcoming
           ? card(
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
                 <Avatar initials={booking.host.initials} color={booking.host.color} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>Tomorrow · {booking.host.time} AM</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>With {booking.host.name} · HSR Layout → Bellandur</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>With {booking.host.name} · {booking.pickup.name} → {booking.drop.short ?? booking.drop.name}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </View>,
