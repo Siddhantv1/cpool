@@ -64,10 +64,12 @@ export default function VehicleDetails() {
       const email = getSession().email;
       await setRole(email, "host");
       await addVehicle(email, vehicle);
-      updateSession({ role: "host", vehicle });
+      const s = getSession();
+      // The first vehicle becomes the default; later ones are added to the list.
+      updateSession({ role: "host", vehicle: s.vehicle ?? vehicle, vehicles: [...(s.vehicles ?? []), vehicle] });
       resetDraft();
       if (router.canDismiss()) router.dismissAll();
-      router.replace({ pathname: "/", params: { added: "1" } });
+      router.replace({ pathname: "/home", params: { added: "1" } });
     } catch (e) {
       setError(e.message);
     } finally {

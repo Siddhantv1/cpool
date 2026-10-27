@@ -67,7 +67,7 @@ export default function Role() {
     try {
       await setRole(getSession().email, "guest");
       updateSession({ role: "guest" });
-      router.replace("/");
+      router.replace("/home");
     } catch (e) {
       setError(e.message);
     } finally {

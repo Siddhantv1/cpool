@@ -1,5 +1,5 @@
 // The whole app's look lives here. Change a value here and every screen follows.
-import { useColorScheme } from "react-native";
+import { Appearance, useColorScheme } from "react-native";
 
 export const colors = {
   light: {
@@ -27,6 +27,15 @@ export const colors = {
     onImage: "#FFFFFF",
     onImageInk: "#0B0F14",
     scrim: "rgba(0,0,0,0.5)",
+    // Home / rides screens (Uber-style): ink buttons, green for publish / accept
+    ink: "#0A0A0A",
+    onInk: "#FFFFFF",
+    green: "#0F9D63",
+    onGreen: "#FFFFFF",
+    greenSurface: "#E6F6EE",
+    line: "#ECEDEF",
+    danger: "#DC2626",
+    route: "#0A0A0A",
   },
   dark: {
     background: "#0B0F14",
@@ -52,6 +61,14 @@ export const colors = {
     onImage: "#FFFFFF",
     onImageInk: "#0B0F14",
     scrim: "rgba(0,0,0,0.5)",
+    ink: "#F5F5F7",
+    onInk: "#0A0A0A",
+    green: "#22C55E",
+    onGreen: "#03261B",
+    greenSurface: "#0B2A1E",
+    line: "#2A2A2E",
+    danger: "#EF4444",
+    route: "#F5F5F7",
   },
 };
 
@@ -61,7 +78,16 @@ export const fontSize = { sm: 13, md: 16, lg: 20, xl: 28, xxl: 32 };
 
 export const radius = { md: 10, lg: 16, pill: 999 };
 
-// Returns the theme for the phone's current light/dark setting.
+// Appearance chosen in Account: "system" follows the phone, "light" / "dark" override it for the whole app.
+// shortcut: kept in memory, so it resets to "system" when the app restarts; save it with AsyncStorage if people ask.
+let appearance = "system";
+export const getAppearance = () => appearance;
+export function setAppearance(mode) {
+  appearance = mode;
+  Appearance.setColorScheme(mode === "system" ? "unspecified" : mode);
+}
+
+// Returns the theme for the current light/dark setting.
 export function useTheme() {
   const scheme = useColorScheme();
   return { colors: colors[scheme === "dark" ? "dark" : "light"], spacing, fontSize, radius };
