@@ -10,7 +10,7 @@ import { setRole } from "../../lib/api";
 import { OFFICES } from "../../lib/mock";
 import { resetDraft } from "../../lib/onboarding";
 import { getSession, updateSession } from "../../lib/session";
-import { cancelPublished, placeName, publishRide, receiveRequests, swapRoute, useTrips } from "../../lib/trips";
+import { cancelPublished, confirmWithdraw, placeName, publishRide, receiveRequests, swapRoute, useTrips } from "../../lib/trips";
 import { useArea } from "../../lib/useArea";
 import { defaultWhen, whenLabel } from "../../lib/when";
 
@@ -101,6 +101,7 @@ function FindView() {
   const { booking, saved, published } = useTrips();
   const [scheduling, setScheduling] = useState(false);
   const accepted = booking?.status === "accepted" ? booking : null;
+  const waiting = booking?.status === "requested" ? booking : null;
   const goResults = (to, when) => router.push({ pathname: "/results", params: when ? { to, when } : { to } });
 
   if (published) {
@@ -134,12 +135,37 @@ function FindView() {
 
       <View>
         {OFFICES.map((o) => (
-          <PlaceRow key={o.id} icon="business-outline" title={o.tag} subtitle={o.name} time={o.id === "bellandur" ? "8:42" : null} onPress={() => goResults(o.name)} />
+          <PlaceRow key={o.id} icon="business-outline" title={o.tag} subtitle={o.name} time={o.id === "bellandur" ? "8:35" : null} onPress={() => goResults(o.name)} />
         ))}
         <PlaceRow icon="home-outline" title={saved.home.name} subtitle={saved.home.area} time="6:10" onPress={() => goResults(saved.home.area)} last />
       </View>
 
-      {accepted ? (
+      {waiting ? (
+        <>
+          <Section title="Upcoming" action="All rides" onAction={() => router.push("/rides")} />
+          <Pressable onPress={() => router.push("/requested")} accessibilityRole="button" style={{ borderRadius: radius.lg + 4, borderWidth: 1, borderColor: colors.line, padding: spacing.md, gap: spacing.md, backgroundColor: colors.background }}>
+            <View style={{ alignSelf: "flex-start", backgroundColor: colors.warningSurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 2, paddingVertical: 4 }}>
+              <Text style={{ color: colors.warning, fontSize: 12, fontWeight: "800" }}>Request sent · waiting for {waiting.host.name.split(" ")[0]}</Text>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+              <Avatar initials={waiting.host.initials} color={waiting.host.color} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700" }}>{waiting.host.name}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>Leaves {waiting.host.time} AM · {waiting.pickup?.name ?? "your pickup"}</Text>
+              </View>
+              <Plate text={waiting.host.plate} />
+            </View>
+            <View style={{ flexDirection: "row", gap: spacing.sm }}>
+              <Pressable onPress={() => router.push("/requested")} accessibilityRole="button" style={{ flex: 1, backgroundColor: colors.ink, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
+                <Text style={{ color: colors.onInk, fontWeight: "800" }}>View request</Text>
+              </Pressable>
+              <Pressable onPress={() => confirmWithdraw()} accessibilityRole="button" style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
+                <Text style={{ color: colors.danger, fontWeight: "800" }}>Withdraw</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </>
+      ) : accepted ? (
         <>
           <Section title="Upcoming" action="All rides" onAction={() => router.push("/rides")} />
           <Pressable onPress={() => router.push("/accepted")} accessibilityRole="button" style={{ borderRadius: radius.lg + 4, borderWidth: 1, borderColor: colors.line, padding: spacing.md, gap: spacing.md, backgroundColor: colors.background }}>

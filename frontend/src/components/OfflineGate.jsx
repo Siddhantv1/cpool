@@ -32,7 +32,7 @@ export default function OfflineGate() {
           <View style={{ alignSelf: "stretch", borderWidth: 1, borderStyle: "dashed", borderColor: colors.border, borderRadius: radius.lg, padding: spacing.md, gap: 4 }}>
             <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "700" }}>Last saved · your next ride</Text>
             <Text style={{ color: colors.text, fontWeight: "700" }}>{h.name} · Tomorrow {h.time} AM</Text>
-            <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>HSR Layout → Perficient Bellandur · {h.plate}</Text>
+            <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{booking.pickup.name} → {booking.drop.name} · {h.plate}</Text>
           </View>
         ) : null}
         <Pressable onPress={() => NetInfo.refresh()} accessibilityRole="button" style={{ alignSelf: "stretch", backgroundColor: colors.ink, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: "center", marginTop: spacing.sm }}>

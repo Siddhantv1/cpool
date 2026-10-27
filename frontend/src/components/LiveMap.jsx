@@ -1,13 +1,21 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Camera, LineLayer, MapView, MarkerView, ShapeSource } from "@rnmapbox/maps";
-import { Text, useColorScheme, View } from "react-native";
+import { useMemo } from "react";
+import { ActivityIndicator, Text, useColorScheme, View } from "react-native";
 import { useTheme } from "../constants/theme";
 import { hasMapboxToken, MAP_STYLES, toBounds } from "../lib/mapbox";
 import { boundsOf, lineFeature } from "../lib/route";
 
-// A pin on the map. kind: "start" | "pickup" | "office"
+// A pin on the map. kind: "start" | "pickup" | "office" | "guest" (a colleague walking to the pickup)
 function Pin({ kind }) {
   const { colors, radius } = useTheme();
+  if (kind === "guest") {
+    return (
+      <View style={{ width: 32, height: 32, borderRadius: radius.pill, backgroundColor: "#7C3AED", alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: colors.onImage }}>
+        <MaterialCommunityIcons name="walk" size={16} color={colors.onImage} />
+      </View>
+    );
+  }
   if (kind === "office") {
     return (
       <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.onInk }}>
@@ -28,8 +36,8 @@ function Vehicle({ type, heading, self }) {
   const { colors, radius } = useTheme();
   if (self) {
     return (
-      <View style={{ width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.green + "33", alignItems: "center", justifyContent: "center" }}>
-        <MaterialCommunityIcons name="navigation" size={28} color={colors.green} style={{ transform: [{ rotate: `${heading}deg` }] }} />
+      <View style={{ width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.primary + "33", alignItems: "center", justifyContent: "center" }}>
+        <MaterialCommunityIcons name="navigation" size={28} color={colors.primary} style={{ transform: [{ rotate: `${heading}deg` }] }} />
       </View>
     );
   }
@@ -51,18 +59,34 @@ export function NoMapToken() {
   );
 }
 
-// route: the full line; done: the part already driven (shown grey); pins: [{ id, kind, coords }]
+// route: the full line (null while it loads); done: the part already driven (shown grey); pins: [{ id, kind, coords }]
 // vehicle: { point, heading, type, self }; walks: dotted walking lines; padding: space taken by cards on top / bottom
 export default function LiveMap({ route, done, pins = [], vehicle, walks = [], padding = { top: 160, bottom: 300, left: 40, right: 40 } }) {
   const { colors } = useTheme();
   const scheme = useColorScheme();
+  // Fit the route, pins and walks; re-fit only when they actually change (e.g. your GPS arrives), not on every car move.
+  const box = route ? boundsOf([...route, ...pins.map((p) => p.coords), ...walks.flat()]) : null;
+  const boxKey = box ? box.map((n) => n.toFixed(5)).join(",") : "";
+  const view = useMemo(() => {
+    if (!boxKey) return null;
+    return {
+      bounds: toBounds(boxKey.split(",").map(Number)),
+      padding: { paddingTop: padding.top, paddingBottom: padding.bottom, paddingLeft: padding.left, paddingRight: padding.right },
+    };
+  }, [boxKey, padding.top, padding.bottom, padding.left, padding.right]);
   if (!hasMapboxToken) return <NoMapToken />;
-  const bounds = toBounds(boundsOf([...route, ...pins.map((p) => p.coords), ...walks.flat()]));
+  if (!route) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }} accessibilityLabel="Loading the route">
+        <ActivityIndicator color={colors.text} />
+      </View>
+    );
+  }
   const line = { lineCap: "round", lineJoin: "round", lineWidth: 6 };
 
   return (
     <MapView style={{ flex: 1 }} styleURL={scheme === "dark" ? MAP_STYLES.dark : MAP_STYLES.light} scaleBarEnabled={false} compassEnabled={false}>
-      <Camera defaultSettings={{ bounds, padding: { paddingTop: padding.top, paddingBottom: padding.bottom, paddingLeft: padding.left, paddingRight: padding.right } }} />
+      <Camera bounds={view.bounds} padding={view.padding} animationDuration={500} />
       <ShapeSource id="route" shape={lineFeature(route)}>
         <LineLayer id="route-line" style={{ ...line, lineColor: colors.route }} />
       </ShapeSource>

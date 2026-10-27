@@ -6,6 +6,7 @@ import Screen from "../../components/Screen";
 import TextField from "../../components/TextField";
 import { useTheme } from "../../constants/theme";
 import { setPassword } from "../../lib/api";
+import { passwordRules } from "../../lib/password";
 
 // Used by both flows: purpose = "signup" (new account) or "reset" (forgot password).
 export default function SetPassword() {
@@ -17,11 +18,7 @@ export default function SetPassword() {
   const [loading, setLoading] = useState(false);
   const isReset = purpose === "reset";
 
-  const rules = [
-    { label: "At least 8 characters", ok: password.length >= 8 },
-    { label: "A letter and a number", ok: /[a-z]/i.test(password) && /\d/.test(password) },
-    { label: "Both passwords match", ok: password.length > 0 && password === confirm },
-  ];
+  const rules = passwordRules(password, confirm);
   const allOk = rules.every((r) => r.ok);
 
   async function onSave() {

@@ -6,8 +6,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
 import { ActionRow, Avatar, call, MapSheet, Stops } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
+import { goBack } from "../lib/nav";
 import { playAlert } from "../lib/alerts";
-import { AGARA_INDEX, OFFICES, PICKUP_INDEX, ROUTE } from "../lib/mock";
+import { useRoute } from "../lib/directions";
+import { HOME, OFFICES } from "../lib/mock";
 import { answerRequest, useTrips } from "../lib/trips";
 
 // A colleague asked for a seat in your ride: who, where, when, then Accept or Decline.
@@ -15,15 +17,23 @@ export default function Request() {
   const { colors, spacing, fontSize, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
-  const { requests } = useTrips();
+  const { requests, published } = useTrips();
   const [index, setIndex] = useState(Math.max(0, requests.findIndex((r) => r.id === id)));
   const req = requests[index];
+  const from = published?.from ?? HOME;
+  const to = published?.to ?? OFFICES[0];
+  // Your route with this colleague's pickup on the way, and without it, to work out the real detour.
+  const withGuest = useRoute(req ? [from.coords, req.coords, to.coords] : null);
+  const direct = useRoute([from.coords, to.coords]);
   if (!req) return <Redirect href="/home" />;
 
-  const pickupCoords = req.pickup.startsWith("Agara") ? ROUTE[AGARA_INDEX] : ROUTE[PICKUP_INDEX];
+  const together = withGuest ? `${withGuest.legs[1].km.toFixed(1)} km` : req.together;
+  const extra = withGuest && direct ? Math.max(0, Math.round(withGuest.minutes - direct.minutes)) : null;
+  const detour = extra === null ? req.detour : extra === 0 ? "No detour" : `+${extra} min`;
   const pins = [
-    { id: "pickup", kind: "pickup", coords: pickupCoords },
-    { id: "office", kind: "office", coords: OFFICES[0].coords },
+    { id: "start", kind: "start", coords: from.coords },
+    { id: "pickup", kind: "pickup", coords: req.coords },
+    { id: "office", kind: "office", coords: to.coords },
   ];
 
   function answer(accept) {
@@ -47,9 +57,9 @@ export default function Request() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1 }}>
-        <LiveMap route={ROUTE} pins={pins} padding={{ top: 90, bottom: 60, left: 50, right: 50 }} />
+        <LiveMap key={req.id} route={withGuest?.coords} pins={pins} padding={{ top: 90, bottom: 60, left: 50, right: 50 }} />
         <View style={{ position: "absolute", top: insets.top + spacing.sm, left: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close" style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+          <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel="Close" style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="close" size={20} color={colors.text} />
           </Pressable>
           <View style={{ backgroundColor: colors.background, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}>
@@ -99,7 +109,7 @@ export default function Request() {
             ]}
           />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {[chip("car", `${req.together} together`), chip("clock-outline", `${req.detour} for you`), chip("seat-passenger", `${req.seats} seat`)]}
+            {[chip("car", `${together} together`), chip("clock-outline", extra === 0 ? detour : `${detour} for you`), chip("seat-passenger", `${req.seats} seat`)]}
           </View>
           <ActionRow left={{ title: "Decline", onPress: decline }} right={{ title: "Accept", green: true, wide: true, onPress: () => answer(true) }} />
         </MapSheet>

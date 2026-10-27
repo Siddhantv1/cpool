@@ -1,5 +1,5 @@
 // All API calls go through here. Fake for now; same shapes as the API table in README.md.
-// shortcut: fake data in memory with an 800 ms delay, replace with fetch() once the FastAPI backend is ready.
+// shortcut: fake data in memory with an 800 ms delay, replace with fetch() once the Django backend is ready.
 
 import { HOSTS, PLACES } from "./mock";
 
@@ -55,6 +55,14 @@ export async function setPassword(token, password) {
 // POST /v1/auth/login {email, password} -> {token, role, vehicle}
 // role is null on the first sign-in, which sends the user to first-time setup.
 // Errors carry a code: "not_registered" (no account for this email) or "wrong_password".
+// POST /v1/me/password {current, new} → { ok }. Error if the current password is wrong.
+export async function changePassword(email, current, next) {
+  await wait();
+  if (users.get(normalize(email)) !== current) throw new Error("Your current password is incorrect.");
+  users.set(normalize(email), next);
+  return { ok: true };
+}
+
 export async function login(email, password) {
   await wait();
   checkEmail(email);

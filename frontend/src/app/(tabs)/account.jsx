@@ -221,6 +221,7 @@ export default function Account() {
               </View>
             }
           />
+          <Row icon="key-outline" title="Change password" onPress={() => router.push("/change-password")} />
           <Row icon="lock-closed-outline" title="Privacy & data" onPress={soon("Privacy settings")} />
           <Row icon="help-circle-outline" title="Help & support" onPress={soon("Help & support")} />
         </Group>

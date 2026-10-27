@@ -5,13 +5,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ActionRow, Avatar, call, Plate, Stops } from "../components/RideUI";
 import StatusHeader from "../components/StatusHeader";
 import { useTheme } from "../constants/theme";
+import { clockPlus, useRoute } from "../lib/directions";
 import { useTrips } from "../lib/trips";
 
 export default function Accepted() {
   const { colors, spacing, fontSize, radius } = useTheme();
   const insets = useSafeAreaInsets();
   const { booking } = useTrips();
-  if (booking?.status !== "accepted") return <Redirect href="/home" />;
+  const ride = useRoute(booking ? [booking.pickup.coords, booking.drop.coords] : null);
+  if (!booking) return <Redirect href="/home" />;
+  // Cancelling moves on to the Cancelled screen; render nothing meanwhile instead of also redirecting.
+  if (booking.status !== "accepted") return null;
   const h = booking.host;
 
   return (
@@ -30,8 +34,8 @@ export default function Accepted() {
           <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>YOUR TRIP</Text>
           <Stops
             stops={[
-              { title: "HSR Layout · 27th Main", subtitle: "Pickup · 2 min walk", time: h.time },
-              { title: "Perficient Bellandur", subtitle: "Drop", time: "9:15" },
+              { title: booking.pickup.name, subtitle: "Pickup", time: h.time },
+              { title: booking.drop.name, subtitle: ride ? `Drop · ${ride.km.toFixed(1)} km ride` : "Drop", time: ride ? clockPlus(h.time, ride.minutes) : "" },
             ]}
           />
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 2, backgroundColor: colors.greenSurface, borderRadius: radius.lg, padding: spacing.md }}>
