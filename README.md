@@ -65,6 +65,7 @@ All routes except auth need `Authorization: Bearer <token>`.
 | POST | `/v1/auth/set-password` | `{token, password}` → `{ok}` (creates the account or resets the password, based on the token) |
 | POST | `/v1/auth/login` | `{email, password}` → `{token}`. Errors: `not_registered` (no account for this email), `wrong_password` |
 | GET / PUT | `/v1/me`, `/v1/me/vehicles`, `/v1/me/devices` | profile, vehicles, push token |
+| POST | `/v1/me/password` | `{current, new}` → `{ok}`. Error if `current` is wrong |
 | PUT | `/v1/me` | `{role: "guest" \| "host"}` set at first-time setup. Login returns `role` (null on first sign-in) and `vehicle` |
 | POST | `/v1/me/vehicles` | `{type: "bike" \| "car", number, model, mfgMonth, mfgYear, colour?, seats (bike = 1, car = 1–7), helmet: "host" \| "guest" \| null}` |
 | POST | `/v1/rides` | offer a ride |
