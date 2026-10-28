@@ -25,7 +25,7 @@ function useKeyboardHeight() {
 // title / subtitle = big heading at the top
 // footer = buttons pinned to the bottom, kept above the keyboard
 export default function Screen({ children, back = false, step, steps = 3, title, subtitle, footer }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/welcome"));
@@ -49,7 +49,7 @@ export default function Screen({ children, back = false, step, steps = 3, title,
               >
                 <View style={{ flex: 1, flexDirection: "row", gap: spacing.xs }}>
                   {Array.from({ length: steps }, (_, i) => (
-                    <View key={i} style={{ flex: 1, height: 4, borderRadius: radius.pill, backgroundColor: i < step ? colors.primary : colors.secondary }} />
+                    <View key={i} style={{ flex: 1, height: rs(4), borderRadius: radius.pill, backgroundColor: i < step ? colors.primary : colors.secondary }} />
                   ))}
                 </View>
                 <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
@@ -68,7 +68,7 @@ export default function Screen({ children, back = false, step, steps = 3, title,
               {title}
             </Text>
           ) : null}
-          {subtitle ? <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: 22 }}>{subtitle}</Text> : null}
+          {subtitle ? <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>{subtitle}</Text> : null}
           {children}
         </ScrollView>
         {footer ? <View style={{ padding: spacing.lg, gap: spacing.sm }}>{footer}</View> : null}

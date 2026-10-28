@@ -11,7 +11,7 @@ const MIN = 1;
 const MAX = 7; // guest seats, not counting the driver (design doc limit)
 
 function RoundButton({ icon, label, onPress, disabled, filled }) {
-  const { colors, radius } = useTheme();
+  const { colors, radius, rs } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -20,8 +20,8 @@ function RoundButton({ icon, label, onPress, disabled, filled }) {
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
       style={{
-        width: 52,
-        height: 52,
+        width: rs(52),
+        height: rs(52),
         borderRadius: radius.pill,
         alignItems: "center",
         justifyContent: "center",
@@ -29,29 +29,29 @@ function RoundButton({ icon, label, onPress, disabled, filled }) {
         opacity: disabled ? 0.4 : 1,
       }}
     >
-      <Ionicons name={icon} size={24} color={filled ? colors.onPrimary : colors.text} />
+      <Ionicons name={icon} size={rs(24)} color={filled ? colors.onPrimary : colors.text} />
     </Pressable>
   );
 }
 
 // Car seen from above: the driver ("You") plus up to 7 guest seats, lit up up to `count`.
 function SeatMap({ count }) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, rs, rf } = useTheme();
   const seat = (lit, key) => (
-    <View key={key} style={{ width: 30, height: 36, borderRadius: 9, backgroundColor: lit ? colors.primary : colors.secondary }} />
+    <View key={key} style={{ width: rs(30), height: rs(36), borderRadius: rs(9), backgroundColor: lit ? colors.primary : colors.secondary }} />
   );
   // Rows: [driver, front passenger], [3 middle], [3 back]; guest seat numbers fill front, then middle, then back.
   return (
     <View
-      style={{ alignSelf: "center", width: 150, padding: spacing.md, paddingTop: spacing.lg, gap: spacing.md, borderRadius: 44, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.surface }}
+      style={{ alignSelf: "center", width: rs(150), padding: spacing.md, paddingTop: spacing.lg, gap: spacing.md, borderRadius: rs(44), borderWidth: 2, borderColor: colors.border, backgroundColor: colors.surface }}
       accessible
       accessibilityLabel={`${count} of ${MAX} guest seats offered`}
     >
-      <View style={{ height: 10, marginHorizontal: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.primarySurface }} />
+      <View style={{ height: rs(10), marginHorizontal: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.primarySurface }} />
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: spacing.xs }}>
         <View style={{ alignItems: "center", gap: 2 }}>
-          <View style={{ width: 30, height: 36, borderRadius: 9, backgroundColor: colors.text }} />
-          <Text style={{ color: colors.textMuted, fontSize: 10 }}>You</Text>
+          <View style={{ width: rs(30), height: rs(36), borderRadius: rs(9), backgroundColor: colors.text }} />
+          <Text style={{ color: colors.textMuted, fontSize: rf(10) }}>You</Text>
         </View>
         {seat(count >= 1, "f")}
       </View>
@@ -65,7 +65,7 @@ function SeatMap({ count }) {
 }
 
 export default function Seats() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const [seats, setSeats] = useState(getDraft().seats ?? 4);
 
   function onContinue() {
@@ -83,8 +83,8 @@ export default function Seats() {
     >
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.xl }}>
         <RoundButton icon="remove" label="One seat fewer" onPress={() => setSeats(seats - 1)} disabled={seats <= MIN} />
-        <View style={{ alignItems: "center", minWidth: 64 }} accessibilityLiveRegion="polite">
-          <Text style={{ color: colors.text, fontSize: 48, fontWeight: "900" }}>{seats}</Text>
+        <View style={{ alignItems: "center", minWidth: rs(64) }} accessibilityLiveRegion="polite">
+          <Text style={{ color: colors.text, fontSize: rf(48), fontWeight: "900" }}>{seats}</Text>
           <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{seats === 1 ? "guest seat" : "guest seats"}</Text>
         </View>
         <RoundButton icon="add" label="One seat more" onPress={() => setSeats(seats + 1)} disabled={seats >= MAX} filled />

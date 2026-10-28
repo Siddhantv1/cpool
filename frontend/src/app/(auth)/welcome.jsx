@@ -7,8 +7,8 @@ import { useTheme } from "../../constants/theme";
 const logo = require("../../../assets/images/logo.png");
 
 export default function Welcome() {
-  const { colors, spacing, fontSize } = useTheme();
-  const big = { fontSize: 56, lineHeight: 60, fontWeight: "800", color: colors.text };
+  const { colors, spacing, fontSize, rs, rf } = useTheme();
+  const big = { fontSize: rf(56), lineHeight: rf(60), fontWeight: "800", color: colors.text };
 
   return (
     <Screen
@@ -20,7 +20,7 @@ export default function Welcome() {
       }
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-        <Image source={logo} style={{ width: 40, height: 40 }} accessible={false} />
+        <Image source={logo} style={{ width: rs(40), height: rs(40) }} accessible={false} />
         <Text style={{ color: colors.text, fontSize: fontSize.lg, fontWeight: "800" }}>Cpool</Text>
       </View>
 
@@ -29,7 +29,7 @@ export default function Welcome() {
           <Text style={big}>Ride.{"\n"}Share.{"\n"}</Text>
           <Text style={[big, { color: colors.success }]}>Save.</Text>
         </Text>
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: 22 }}>
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>
           The carpool app for Perficient colleagues
         </Text>
       </View>

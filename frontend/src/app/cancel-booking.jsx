@@ -10,7 +10,7 @@ const REASONS = ["My plans changed", "I found another ride", "Pickup point is to
 
 // Guest cancels an accepted ride: pick a reason so the host knows why.
 export default function CancelBooking() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const { booking } = useTrips();
   const [reason, setReason] = useState(null);
   const [note, setNote] = useState("");
@@ -58,7 +58,7 @@ export default function CancelBooking() {
             style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md, borderTopWidth: i ? 1 : 0, borderTopColor: colors.line }}
           >
             <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.md, fontWeight: reason === r ? "700" : "500" }}>{r}</Text>
-            <Ionicons name={reason === r ? "radio-button-on" : "radio-button-off"} size={22} color={reason === r ? colors.ink : colors.border} />
+            <Ionicons name={reason === r ? "radio-button-on" : "radio-button-off"} size={rs(22)} color={reason === r ? colors.ink : colors.border} />
           </Pressable>
         ))}
       </View>
@@ -71,12 +71,12 @@ export default function CancelBooking() {
           accessibilityLabel="Reason"
           multiline
           maxLength={140}
-          style={{ minHeight: 88, textAlignVertical: "top", backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, color: colors.text, fontSize: fontSize.md }}
+          style={{ minHeight: rs(88), textAlignVertical: "top", backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, color: colors.text, fontSize: fontSize.md }}
         />
       ) : null}
       <View style={{ flexDirection: "row", gap: spacing.sm, backgroundColor: colors.warningSurface, borderRadius: radius.lg, padding: spacing.md }}>
-        <Ionicons name="information-circle-outline" size={19} color={colors.warning} />
-        <Text style={{ flex: 1, color: colors.warning, fontSize: fontSize.sm, lineHeight: 19 }}>Cancelling often makes it harder to get seats. If you’re only running late, call {firstName} instead.</Text>
+        <Ionicons name="information-circle-outline" size={rs(19)} color={colors.warning} />
+        <Text style={{ flex: 1, color: colors.warning, fontSize: fontSize.sm, lineHeight: rf(19) }}>Cancelling often makes it harder to get seats. If you’re only running late, call {firstName} instead.</Text>
       </View>
     </Screen>
   );

@@ -18,7 +18,7 @@ const COPY = {
 };
 
 export default function Cancelled() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const { kind = "host" } = useLocalSearchParams();
   const copy = COPY[kind] ?? COPY.host;
@@ -37,8 +37,8 @@ export default function Cancelled() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <StatusHeader tone="danger" stamp={copy.stamp} title={copy.title} subtitle={`Tomorrow · ${host.time} AM with ${host.name}`} />
-        <View style={{ flex: 1, marginTop: -24, backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.lg }}>
-          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>RIDE DETAILS</Text>
+        <View style={{ flex: 1, marginTop: -rs(24), backgroundColor: colors.background, borderTopLeftRadius: rs(24), borderTopRightRadius: rs(24), padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.lg }}>
+          <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>RIDE DETAILS</Text>
           <Stops
             stops={[
               { title: booking?.pickup?.name ?? "Pickup", subtitle: "Pickup", time: host.time },
@@ -46,22 +46,22 @@ export default function Cancelled() {
             ]}
           />
           <View style={{ flexDirection: "row", gap: spacing.sm + 2, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }}>
-            <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+            <Ionicons name="alert-circle-outline" size={rs(20)} color={colors.danger} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: "700" }}>{noteTitle}</Text>
-              <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, lineHeight: 19 }}>{noteText}</Text>
+              <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, lineHeight: rf(19) }}>{noteText}</Text>
             </View>
           </View>
-          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>OTHER RIDES FOR YOU</Text>
+          <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>OTHER RIDES FOR YOU</Text>
           {others.map((h) => (
             <View key={h.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: spacing.sm + 4 }}>
-              <Avatar initials={h.initials} color={h.color} size={34} />
+              <Avatar initials={h.initials} color={h.color} size={rs(34)} />
               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>{h.name}</Text>
-                  <MaterialCommunityIcons name={h.type === "bike" ? "motorbike" : "car"} size={15} color={colors.primary} />
+                  <MaterialCommunityIcons name={h.type === "bike" ? "motorbike" : "car"} size={rs(15)} color={colors.primary} />
                 </View>
-                <Text style={{ color: colors.textMuted, fontSize: 12 }}>{h.walkTo} walk · {h.seatsFree} seat{h.seatsFree > 1 ? "s" : ""}</Text>
+                <Text style={{ color: colors.textMuted, fontSize: rf(12) }}>{h.walkTo} walk · {h.seatsFree} seat{h.seatsFree > 1 ? "s" : ""}</Text>
               </View>
               <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{h.time}</Text>
             </View>

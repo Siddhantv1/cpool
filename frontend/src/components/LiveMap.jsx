@@ -8,52 +8,52 @@ import { boundsOf, lineFeature } from "../lib/route";
 
 // A pin on the map. kind: "start" | "pickup" | "office" | "guest" (a colleague walking to the pickup)
 function Pin({ kind }) {
-  const { colors, radius } = useTheme();
+  const { colors, radius, rs } = useTheme();
   if (kind === "guest") {
     return (
-      <View style={{ width: 32, height: 32, borderRadius: radius.pill, backgroundColor: "#7C3AED", alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: colors.onImage }}>
-        <MaterialCommunityIcons name="walk" size={16} color={colors.onImage} />
+      <View style={{ width: rs(32), height: rs(32), borderRadius: radius.pill, backgroundColor: "#7C3AED", alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: colors.onImage }}>
+        <MaterialCommunityIcons name="walk" size={rs(16)} color={colors.onImage} />
       </View>
     );
   }
   if (kind === "office") {
     return (
-      <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.onInk }}>
-        <Ionicons name="business" size={14} color={colors.onInk} />
+      <View style={{ width: rs(28), height: rs(28), borderRadius: rs(8), backgroundColor: colors.ink, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.onInk }}>
+        <Ionicons name="business" size={rs(14)} color={colors.onInk} />
       </View>
     );
   }
   const color = kind === "pickup" ? "#7C3AED" : colors.green;
   return (
-    <View style={{ width: 30, height: 30, borderRadius: radius.pill, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
-      <View style={{ width: 16, height: 16, borderRadius: radius.pill, backgroundColor: color, borderWidth: 3, borderColor: colors.onImage }} />
+    <View style={{ width: rs(30), height: rs(30), borderRadius: radius.pill, backgroundColor: color + "33", alignItems: "center", justifyContent: "center" }}>
+      <View style={{ width: rs(16), height: rs(16), borderRadius: radius.pill, backgroundColor: color, borderWidth: 3, borderColor: colors.onImage }} />
     </View>
   );
 }
 
 // The moving vehicle. self = your own position (navigation arrow), otherwise the host's car or bike.
 function Vehicle({ type, heading, self }) {
-  const { colors, radius } = useTheme();
+  const { colors, radius, rs } = useTheme();
   if (self) {
     return (
-      <View style={{ width: 44, height: 44, borderRadius: radius.pill, backgroundColor: colors.primary + "33", alignItems: "center", justifyContent: "center" }}>
-        <MaterialCommunityIcons name="navigation" size={28} color={colors.primary} style={{ transform: [{ rotate: `${heading}deg` }] }} />
+      <View style={{ width: rs(44), height: rs(44), borderRadius: radius.pill, backgroundColor: colors.primary + "33", alignItems: "center", justifyContent: "center" }}>
+        <MaterialCommunityIcons name="navigation" size={rs(28)} color={colors.primary} style={{ transform: [{ rotate: `${heading}deg` }] }} />
       </View>
     );
   }
   return (
-    <View style={{ width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.route, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: colors.background }}>
-      <MaterialCommunityIcons name={type === "bike" ? "motorbike" : "car"} size={20} color={colors.background} />
+    <View style={{ width: rs(40), height: rs(40), borderRadius: radius.pill, backgroundColor: colors.route, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: colors.background }}>
+      <MaterialCommunityIcons name={type === "bike" ? "motorbike" : "car"} size={rs(20)} color={colors.background} />
     </View>
   );
 }
 
 // Shown instead of the map when .env has no Mapbox token (e.g. a fresh clone of the repo).
 export function NoMapToken() {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, rs } = useTheme();
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", padding: spacing.lg, gap: spacing.sm }}>
-      <Ionicons name="map-outline" size={32} color={colors.textMuted} />
+      <Ionicons name="map-outline" size={rs(32)} color={colors.textMuted} />
       <Text style={{ color: colors.textMuted, textAlign: "center" }}>Add EXPO_PUBLIC_MAPBOX_TOKEN to .env to show the map.</Text>
     </View>
   );
@@ -61,8 +61,9 @@ export function NoMapToken() {
 
 // route: the full line (null while it loads); done: the part already driven (shown grey); pins: [{ id, kind, coords }]
 // vehicle: { point, heading, type, self }; walks: dotted walking lines; padding: space taken by cards on top / bottom
-export default function LiveMap({ route, done, pins = [], vehicle, walks = [], padding = { top: 160, bottom: 300, left: 40, right: 40 } }) {
-  const { colors } = useTheme();
+export default function LiveMap({ route, done, pins = [], vehicle, walks = [], padding: givenPadding }) {
+  const { colors, rs } = useTheme();
+  const padding = givenPadding ?? { top: rs(160), bottom: rs(300), left: rs(40), right: rs(40) };
   const scheme = useColorScheme();
   // Fit the route, pins and walks; re-fit only when they actually change (e.g. your GPS arrives), not on every car move.
   const box = route ? boundsOf([...route, ...pins.map((p) => p.coords), ...walks.flat()]) : null;

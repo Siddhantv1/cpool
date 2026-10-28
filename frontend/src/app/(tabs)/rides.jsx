@@ -8,7 +8,7 @@ import { PAST_RIDES } from "../../lib/mock";
 import { cancelBooking, useTrips } from "../../lib/trips";
 
 export default function MyRides() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const { booking, passenger, published } = useTrips();
   const upcoming = booking?.status === "accepted";
   const waiting = booking?.status === "requested";
@@ -24,9 +24,9 @@ export default function MyRides() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
         <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xl - 4, fontWeight: "800" }}>My rides</Text>
 
-        <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>UPCOMING</Text>
+        <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>UPCOMING</Text>
         {!upcoming && !waiting && !passenger && !published ? (
-          <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: 4 }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: rs(4) }}>
             <Text style={{ color: colors.text, fontWeight: "700" }}>No upcoming rides</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Find a ride or offer one from Home.</Text>
           </View>
@@ -39,7 +39,7 @@ export default function MyRides() {
                   <Text style={{ color: colors.warning, fontWeight: "700" }}>Waiting for {booking.host.name.split(" ")[0]} to accept</Text>
                   <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Tomorrow · {booking.host.time} AM · {booking.pickup.name} → {booking.drop.short ?? booking.drop.name}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                <Ionicons name="chevron-forward" size={rs(18)} color={colors.textMuted} />
               </View>,
               () => router.push("/requested"),
             )
@@ -52,7 +52,7 @@ export default function MyRides() {
                   <Text style={{ color: colors.text, fontWeight: "700" }}>Tomorrow · {booking.host.time} AM</Text>
                   <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>With {booking.host.name} · {booking.pickup.name} → {booking.drop.short ?? booking.drop.name}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                <Ionicons name="chevron-forward" size={rs(18)} color={colors.textMuted} />
               </View>,
               () => router.push("/accepted"),
             )
@@ -60,22 +60,22 @@ export default function MyRides() {
         {published
           ? card(
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                <MaterialCommunityIcons name="steering" size={26} color={colors.green} />
+                <MaterialCommunityIcons name="steering" size={rs(26)} color={colors.green} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>You’re hosting · {published.when}</Text>
                   <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{passenger ? `With ${passenger.name}` : "Waiting for requests"}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                <Ionicons name="chevron-forward" size={rs(18)} color={colors.textMuted} />
               </View>,
               () => router.push(passenger ? "/drive" : "/home"),
             )
           : null}
 
-        <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1, marginTop: spacing.sm }}>PAST</Text>
+        <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1, marginTop: spacing.sm }}>PAST</Text>
         {PAST_RIDES.map((r) => (
           <View key={r.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.line }}>
-            <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-              <MaterialCommunityIcons name={r.role === "host" ? "steering" : "seat-passenger"} size={18} color={colors.text} />
+            <View style={{ width: rs(38), height: rs(38), borderRadius: rs(19), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+              <MaterialCommunityIcons name={r.role === "host" ? "steering" : "seat-passenger"} size={rs(18)} color={colors.text} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: "700" }}>{r.from} → {r.to}</Text>

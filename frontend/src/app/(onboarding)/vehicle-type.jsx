@@ -26,7 +26,7 @@ const TYPES = [
 ];
 
 function VehicleCard({ item, selected, onPress }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -54,7 +54,7 @@ function VehicleCard({ item, selected, onPress }) {
             top: spacing.sm + 2,
             color: colors.onImage,
             backgroundColor: colors.onImageInk + "B8",
-            fontSize: 11,
+            fontSize: rf(11),
             fontWeight: "700",
             paddingHorizontal: spacing.sm + 2,
             paddingVertical: spacing.xs,
@@ -70,19 +70,19 @@ function VehicleCard({ item, selected, onPress }) {
               position: "absolute",
               left: spacing.sm + 2,
               top: spacing.sm + 2,
-              width: 26,
-              height: 26,
+              width: rs(26),
+              height: rs(26),
               borderRadius: radius.pill,
               backgroundColor: colors.primary,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Ionicons name="checkmark" size={16} color={colors.onPrimary} />
+            <Ionicons name="checkmark" size={rs(16)} color={colors.onPrimary} />
           </View>
         ) : null}
       </View>
-      <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, lineHeight: 18, padding: spacing.md }}>{item.text}</Text>
+      <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, lineHeight: rf(18), padding: spacing.md }}>{item.text}</Text>
     </Pressable>
   );
 }

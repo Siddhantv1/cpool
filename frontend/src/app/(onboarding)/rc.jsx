@@ -13,17 +13,17 @@ import { parseRc } from "../../lib/vehicle";
 
 // Small drawing of an RC card (no image file needed).
 function RcIllustration() {
-  const { colors, spacing, radius } = useTheme();
-  const line = (w, dark) => <View style={{ width: w, height: dark ? 7 : 5, borderRadius: 3, backgroundColor: dark ? colors.onImageInk : colors.border }} />;
+  const { colors, spacing, radius, rs, rf } = useTheme();
+  const line = (w, dark) => <View style={{ width: w, height: dark ? 7 : 5, borderRadius: rs(3), backgroundColor: dark ? colors.onImageInk : colors.border }} />;
   return (
     <LinearGradient colors={[colors.primarySurface, colors.background]} style={{ borderRadius: radius.lg + 6, alignItems: "center", paddingVertical: spacing.lg }}>
-      <View style={{ width: 200, borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.onImage }} accessible={false}>
-        <View style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.sm + 2, paddingVertical: 6 }}>
-          <Text style={{ color: colors.onPrimary, fontSize: 9, fontWeight: "800", letterSpacing: 0.5 }}>REGISTRATION CERTIFICATE</Text>
+      <View style={{ width: rs(200), borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.onImage }} accessible={false}>
+        <View style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.sm + 2, paddingVertical: rs(6) }}>
+          <Text style={{ color: colors.onPrimary, fontSize: rf(9), fontWeight: "800", letterSpacing: 0.5 }}>REGISTRATION CERTIFICATE</Text>
         </View>
         <View style={{ flexDirection: "row", gap: spacing.sm + 2, padding: spacing.sm + 2 }}>
-          <View style={{ width: 36, height: 44, borderRadius: 4, backgroundColor: colors.border }} />
-          <View style={{ flex: 1, gap: 6, paddingTop: 2 }}>
+          <View style={{ width: rs(36), height: rs(44), borderRadius: rs(4), backgroundColor: colors.border }} />
+          <View style={{ flex: 1, gap: rs(6), paddingTop: 2 }}>
             {line("75%", true)}
             {line("100%")}
             {line("85%")}
@@ -36,17 +36,17 @@ function RcIllustration() {
 }
 
 function Tip({ icon, text }) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, rs, rf } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: "center", gap: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.md + 2, paddingVertical: spacing.sm + 2 }}>
-      <Ionicons name={icon} size={18} color={colors.textMuted} />
-      <Text style={{ color: colors.textMuted, fontSize: 11 }}>{text}</Text>
+      <Ionicons name={icon} size={rs(18)} color={colors.textMuted} />
+      <Text style={{ color: colors.textMuted, fontSize: rf(11) }}>{text}</Text>
     </View>
   );
 }
 
 function SourceButton({ icon, title, primary, onPress, disabled }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs } = useTheme();
   const fg = primary ? colors.onPrimary : colors.text;
   return (
     <Pressable
@@ -64,14 +64,14 @@ function SourceButton({ icon, title, primary, onPress, disabled }) {
         opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
       })}
     >
-      <Ionicons name={icon} size={24} color={fg} />
+      <Ionicons name={icon} size={rs(24)} color={fg} />
       <Text style={{ color: fg, fontSize: fontSize.sm, fontWeight: "700" }}>{title}</Text>
     </Pressable>
   );
 }
 
 export default function AddRc() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const [reading, setReading] = useState(false);
   const [error, setError] = useState("");
 
@@ -140,7 +140,7 @@ export default function AddRc() {
       )}
       {error ? (
         <View style={{ backgroundColor: colors.warningSurface, borderRadius: radius.md + 2, padding: spacing.sm + 4 }} accessibilityLiveRegion="polite">
-          <Text style={{ color: colors.warning, fontSize: fontSize.sm, lineHeight: 19 }}>{error}</Text>
+          <Text style={{ color: colors.warning, fontSize: fontSize.sm, lineHeight: rf(19) }}>{error}</Text>
         </View>
       ) : null}
       <View style={{ flexDirection: "row", gap: spacing.sm }}>
@@ -149,8 +149,8 @@ export default function AddRc() {
         <Tip icon="document-text-outline" text="Text readable" />
       </View>
       <View style={{ flexDirection: "row", gap: spacing.xs + 2 }}>
-        <Ionicons name="lock-closed-outline" size={14} color={colors.textMuted} style={{ marginTop: 2 }} />
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, flex: 1, lineHeight: 18 }}>
+        <Ionicons name="lock-closed-outline" size={rs(14)} color={colors.textMuted} style={{ marginTop: 2 }} />
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, flex: 1, lineHeight: rf(18) }}>
           Used only to read your vehicle details. The photo and your address are never saved.
         </Text>
       </View>

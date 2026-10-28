@@ -17,7 +17,7 @@ const NEARBY_KM = 0.5;
 
 // The host is driving to your pickup point.
 export default function Coming() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const { booking } = useTrips();
   const [phase, setPhase] = useState("coming"); // coming → nearby → arrived
@@ -70,9 +70,9 @@ export default function Coming() {
       <View style={{ flex: 1 }} />
       <MapSheet>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }}>
-          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: "#7C3AED" }} />
+          <View style={{ width: rs(14), height: rs(14), borderRadius: rs(7), backgroundColor: "#7C3AED" }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "600" }}>Meet point</Text>
+            <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "600" }}>Meet point</Text>
             <Text style={{ color: check.arrived ? colors.green : colors.text, fontWeight: "700", fontSize: fontSize.md }} numberOfLines={2} accessibilityLiveRegion="polite">
               {!needsWalk
                 ? "On your street"
@@ -84,12 +84,12 @@ export default function Coming() {
                       ? `${walkLabel(walk.km)} walk from ${booking.pickup.here ? "you" : booking.pickup.name}`
                       : "Working out the walk…"}
             </Text>
-            {needsWalk && !check.allowed ? <Text style={{ color: colors.textMuted, fontSize: 12 }}>Turn on location so {first} knows when you reach it.</Text> : null}
+            {needsWalk && !check.allowed ? <Text style={{ color: colors.textMuted, fontSize: rf(12) }}>Turn on location so {first} knows when you reach it.</Text> : null}
           </View>
           {walk && !check.arrived ? (
-            <Pressable onPress={() => meet && Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${meet[1]},${meet[0]}&travelmode=walking`)} accessibilityRole="button" accessibilityLabel="Walking directions in Google Maps" style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm }}>
-              <Ionicons name="walk" size={14} color={colors.onInk} />
-              <Text style={{ color: colors.onInk, fontWeight: "800", fontSize: 12 }}>Walk</Text>
+            <Pressable onPress={() => meet && Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${meet[1]},${meet[0]}&travelmode=walking`)} accessibilityRole="button" accessibilityLabel="Walking directions in Google Maps" style={{ flexDirection: "row", alignItems: "center", gap: rs(4), backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm }}>
+              <Ionicons name="walk" size={rs(14)} color={colors.onInk} />
+              <Text style={{ color: colors.onInk, fontWeight: "800", fontSize: rf(12) }}>Walk</Text>
             </Pressable>
           ) : null}
         </View>
@@ -108,7 +108,7 @@ export default function Coming() {
         )}
         {phase === "nearby" ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }} accessibilityLiveRegion="polite">
-            <Ionicons name="walk" size={16} color={colors.green} />
+            <Ionicons name="walk" size={rs(16)} color={colors.green} />
             <Text style={{ color: colors.green, fontWeight: "700" }}>Start walking to the pickup point</Text>
           </View>
         ) : null}

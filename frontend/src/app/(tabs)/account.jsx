@@ -13,14 +13,14 @@ import { setPlace, useTrips } from "../../lib/trips";
 const soon = (what) => () => Alert.alert("Coming soon", `${what} is on its way.`);
 
 function Group({ title, action, onAction, children }) {
-  const { colors, spacing } = useTheme();
+  const { colors, spacing, rf } = useTheme();
   return (
     <View style={{ gap: 2 }}>
       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
-        <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>{title}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>{title}</Text>
         {action ? (
           <Pressable onPress={onAction} accessibilityRole="button" hitSlop={8}>
-            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: 13 }}>{action}</Text>
+            <Text style={{ color: colors.primary, fontWeight: "800", fontSize: rf(13) }}>{action}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -30,7 +30,7 @@ function Group({ title, action, onAction, children }) {
 }
 
 function Row({ icon, mc, title, subtitle, right, onPress, badge }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -38,25 +38,25 @@ function Row({ icon, mc, title, subtitle, right, onPress, badge }) {
       accessibilityRole={onPress ? "button" : undefined}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: colors.line, opacity: pressed ? 0.7 : 1 })}
     >
-      <View style={{ width: 36, height: 36, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-        {mc ? <MaterialCommunityIcons name={icon} size={19} color={colors.text} /> : <Ionicons name={icon} size={18} color={colors.text} />}
+      <View style={{ width: rs(36), height: rs(36), borderRadius: radius.md, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+        {mc ? <MaterialCommunityIcons name={icon} size={rs(19)} color={colors.text} /> : <Ionicons name={icon} size={rs(18)} color={colors.text} />}
       </View>
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: rs(6) }}>
           <Text style={{ color: colors.text, fontWeight: "600", fontSize: fontSize.md }}>{title}</Text>
           {badge ? (
-            <Text style={{ color: colors.green, backgroundColor: colors.greenSurface, fontSize: 10, fontWeight: "800", paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, overflow: "hidden" }}>{badge}</Text>
+            <Text style={{ color: colors.green, backgroundColor: colors.greenSurface, fontSize: rf(10), fontWeight: "800", paddingHorizontal: rs(7), paddingVertical: 2, borderRadius: rs(999), overflow: "hidden" }}>{badge}</Text>
           ) : null}
         </View>
         {subtitle ? <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{subtitle}</Text> : null}
       </View>
-      {right ?? (onPress ? <Ionicons name="chevron-forward" size={17} color={colors.textMuted} /> : null)}
+      {right ?? (onPress ? <Ionicons name="chevron-forward" size={rs(17)} color={colors.textMuted} /> : null)}
     </Pressable>
   );
 }
 
 export default function Account() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const [, refresh] = useState(0);
   const { saved } = useTrips();
   useFocusEffect(useCallback(() => refresh((n) => n + 1), []));
@@ -95,21 +95,21 @@ export default function Account() {
 
         {/* Profile header */}
         <View style={{ borderRadius: radius.lg + 6, overflow: "hidden", backgroundColor: colors.surface }}>
-          <LinearGradient colors={["#1D4ED8", "#0F9D63"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ height: 64 }} />
-          <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md, marginTop: -36, gap: spacing.sm + 2 }}>
+          <LinearGradient colors={["#1D4ED8", "#0F9D63"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ height: rs(64) }} />
+          <View style={{ paddingHorizontal: spacing.md, paddingBottom: spacing.md, marginTop: -rs(36), gap: spacing.sm + 2 }}>
             <View style={{ flexDirection: "row", alignItems: "flex-end" }}>
-              <View style={{ width: 72, height: 72, borderRadius: 36, borderWidth: 3, borderColor: colors.surface, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: rs(72), height: rs(72), borderRadius: rs(36), borderWidth: 3, borderColor: colors.surface, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
                 {session.photo ? (
-                  <Image source={{ uri: session.photo }} style={{ width: 66, height: 66, borderRadius: 33 }} accessibilityLabel="Your profile photo" />
+                  <Image source={{ uri: session.photo }} style={{ width: rs(66), height: rs(66), borderRadius: rs(33) }} accessibilityLabel="Your profile photo" />
                 ) : (
-                  <Text style={{ color: colors.onPrimary, fontSize: 24, fontWeight: "800" }}>{initials.toUpperCase()}</Text>
+                  <Text style={{ color: colors.onPrimary, fontSize: rf(24), fontWeight: "800" }}>{initials.toUpperCase()}</Text>
                 )}
-                <Pressable onPress={editProfile} accessibilityRole="button" accessibilityLabel="Change photo" style={{ position: "absolute", right: -2, bottom: -2, width: 26, height: 26, borderRadius: 13, backgroundColor: colors.background, borderWidth: 2, borderColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-                  <Ionicons name="pencil" size={12} color={colors.text} />
+                <Pressable onPress={editProfile} accessibilityRole="button" accessibilityLabel="Change photo" style={{ position: "absolute", right: -2, bottom: -2, width: rs(26), height: rs(26), borderRadius: rs(13), backgroundColor: colors.background, borderWidth: 2, borderColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+                  <Ionicons name="pencil" size={rs(12)} color={colors.text} />
                 </Pressable>
               </View>
-              <Pressable onPress={editProfile} accessibilityRole="button" style={{ marginLeft: "auto", backgroundColor: colors.background, borderRadius: 999, paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}>
-                <Text style={{ color: colors.text, fontWeight: "700", fontSize: 13 }}>Edit profile</Text>
+              <Pressable onPress={editProfile} accessibilityRole="button" style={{ marginLeft: "auto", backgroundColor: colors.background, borderRadius: rs(999), paddingHorizontal: spacing.md, paddingVertical: spacing.sm }}>
+                <Text style={{ color: colors.text, fontWeight: "700", fontSize: rf(13) }}>Edit profile</Text>
               </Pressable>
             </View>
             <View>
@@ -117,14 +117,14 @@ export default function Account() {
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{session.email}{session.gender && session.gender !== "Prefer not to say" ? ` · ${session.gender}` : ""}</Text>
             </View>
             <View style={{ flexDirection: "row", gap: spacing.sm }}>
-              <Text style={{ color: colors.green, backgroundColor: colors.greenSurface, fontSize: 11, fontWeight: "700", paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, overflow: "hidden" }}>✓ Verified work email</Text>
-              <Text style={{ color: colors.primary, backgroundColor: colors.primarySurface, fontSize: 11, fontWeight: "700", paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, overflow: "hidden" }}>{mode === "host" ? "Host" : "Guest"}</Text>
+              <Text style={{ color: colors.green, backgroundColor: colors.greenSurface, fontSize: rf(11), fontWeight: "700", paddingHorizontal: rs(9), paddingVertical: rs(4), borderRadius: rs(999), overflow: "hidden" }}>✓ Verified work email</Text>
+              <Text style={{ color: colors.primary, backgroundColor: colors.primarySurface, fontSize: rf(11), fontWeight: "700", paddingHorizontal: rs(9), paddingVertical: rs(4), borderRadius: rs(999), overflow: "hidden" }}>{mode === "host" ? "Host" : "Guest"}</Text>
             </View>
             <View style={{ flexDirection: "row", backgroundColor: colors.background, borderRadius: radius.lg, paddingVertical: spacing.sm + 2 }}>
               {[["12", "Rides taken"], ["8", "Rides given"], ["146 km", "Shared"]].map(([v, l], i) => (
                 <View key={l} style={{ flex: 1, alignItems: "center", borderLeftWidth: i ? 1 : 0, borderLeftColor: colors.line }}>
                   <Text style={{ color: colors.text, fontSize: fontSize.lg - 3, fontWeight: "800" }}>{v}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "600" }}>{l}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "600" }}>{l}</Text>
                 </View>
               ))}
             </View>
@@ -132,7 +132,7 @@ export default function Account() {
         </View>
 
         {/* Find / Offer */}
-        <View style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: radius.md + 2, padding: 3 }} accessibilityRole="tablist">
+        <View style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: radius.md + 2, padding: rs(3) }} accessibilityRole="tablist">
           {[["guest", "Find a ride"], ["host", "Offer a ride"]].map(([key, label]) => (
             <Pressable key={key} onPress={() => switchMode(key)} accessibilityRole="tab" accessibilityState={{ selected: mode === key }} style={{ flex: 1, alignItems: "center", paddingVertical: spacing.sm + 2, borderRadius: radius.md, backgroundColor: mode === key ? colors.background : "transparent" }}>
               <Text style={{ color: mode === key ? colors.text : colors.textMuted, fontWeight: "700" }}>{label}</Text>
@@ -150,12 +150,12 @@ export default function Account() {
               badge={session.vehicle?.number === v.number ? "Default" : undefined}
               subtitle={`${v.number} · ${v.type === "bike" ? "1 seat" : `${v.seats} seats`}${v.helmet === "host" ? " · spare helmet" : ""}`}
               onPress={session.vehicle?.number === v.number ? undefined : () => set({ vehicle: v })}
-              right={session.vehicle?.number === v.number ? null : <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Make default</Text>}
+              right={session.vehicle?.number === v.number ? null : <Text style={{ color: colors.primary, fontSize: rf(12), fontWeight: "700" }}>Make default</Text>}
             />
           ))}
           <Pressable onPress={addVehicle} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 4 }}>
-            <View style={{ width: 36, height: 36, borderRadius: radius.md, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="add" size={20} color={colors.primary} />
+            <View style={{ width: rs(36), height: rs(36), borderRadius: radius.md, borderWidth: 1.5, borderStyle: "dashed", borderColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="add" size={rs(20)} color={colors.primary} />
             </View>
             <View>
               <Text style={{ color: colors.primary, fontWeight: "700", fontSize: fontSize.md }}>Add a bike or car</Text>
@@ -165,12 +165,12 @@ export default function Account() {
         </Group>
 
         <Group title="SAVED PLACES">
-          <Row icon="home-outline" title="Home" subtitle={saved.home.area} right={<Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Edit</Text>} onPress={() => router.push({ pathname: "/places", params: { pick: "home" } })} />
+          <Row icon="home-outline" title="Home" subtitle={saved.home.area} right={<Text style={{ color: colors.primary, fontSize: rf(12), fontWeight: "700" }}>Edit</Text>} onPress={() => router.push({ pathname: "/places", params: { pick: "home" } })} />
           <Row
             icon="business-outline"
             title="Office"
             subtitle={`${saved.office.name} · ${saved.office.tag}`}
-            right={<Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>Change</Text>}
+            right={<Text style={{ color: colors.primary, fontSize: rf(12), fontWeight: "700" }}>Change</Text>}
             onPress={() =>
               Alert.alert("Your office", "Rides to work will go here by default.", [
                 ...OFFICES.map((o) => ({ text: `${o.short} · ${o.tag}`, onPress: () => setPlace("office", o) })),
@@ -202,7 +202,7 @@ export default function Account() {
             icon="moon-outline"
             title="Appearance"
             right={
-              <View style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: radius.pill, padding: 3 }} accessibilityRole="radiogroup" accessibilityLabel="Appearance">
+              <View style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: radius.pill, padding: rs(3) }} accessibilityRole="radiogroup" accessibilityLabel="Appearance">
                 {[["system", "System"], ["light", "Light"], ["dark", "Dark"]].map(([key, label]) => (
                   <Pressable
                     key={key}
@@ -213,9 +213,9 @@ export default function Account() {
                     accessibilityRole="radio"
                     accessibilityLabel={key === "system" ? "Same as phone" : label}
                     accessibilityState={{ checked: getAppearance() === key }}
-                    style={{ paddingHorizontal: spacing.sm + 4, paddingVertical: 6, borderRadius: radius.pill, backgroundColor: getAppearance() === key ? colors.ink : "transparent" }}
+                    style={{ paddingHorizontal: spacing.sm + 4, paddingVertical: rs(6), borderRadius: radius.pill, backgroundColor: getAppearance() === key ? colors.ink : "transparent" }}
                   >
-                    <Text style={{ color: getAppearance() === key ? colors.onInk : colors.textMuted, fontWeight: "700", fontSize: 12 }}>{label}</Text>
+                    <Text style={{ color: getAppearance() === key ? colors.onInk : colors.textMuted, fontWeight: "700", fontSize: rf(12) }}>{label}</Text>
                   </Pressable>
                 ))}
               </View>
@@ -229,7 +229,7 @@ export default function Account() {
         <Pressable onPress={logOut} accessibilityRole="button" style={{ alignItems: "center", paddingVertical: spacing.sm }}>
           <Text style={{ color: colors.danger, fontWeight: "800", fontSize: fontSize.md }}>Log out</Text>
         </Pressable>
-        <Text style={{ color: colors.textMuted, fontSize: 11, textAlign: "center", marginTop: -spacing.sm }}>Cpool 1.0.0</Text>
+        <Text style={{ color: colors.textMuted, fontSize: rf(11), textAlign: "center", marginTop: -spacing.sm }}>Cpool 1.0.0</Text>
       </ScrollView>
     </SafeAreaView>
   );

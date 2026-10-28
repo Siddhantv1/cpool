@@ -32,7 +32,7 @@ function Section({ title, action, onAction }) {
 }
 
 function PlaceRow({ icon, title, subtitle, time, onPress, last }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -40,8 +40,8 @@ function PlaceRow({ icon, title, subtitle, time, onPress, last }) {
       accessibilityLabel={`${title}, ${subtitle}, ${time ? `next ride ${time}` : "no rides yet"}`}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 4, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.line, opacity: pressed ? 0.7 : 1 })}
     >
-      <View style={{ width: 42, height: 42, borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-        <Ionicons name={icon} size={20} color={colors.text} />
+      <View style={{ width: rs(42), height: rs(42), borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name={icon} size={rs(20)} color={colors.text} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700" }}>{title}</Text>
@@ -50,7 +50,7 @@ function PlaceRow({ icon, title, subtitle, time, onPress, last }) {
       {time ? (
         <View style={{ alignItems: "flex-end" }}>
           <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "800" }}>{time}</Text>
-          <Text style={{ color: colors.textMuted, fontSize: 11 }}>next ride</Text>
+          <Text style={{ color: colors.textMuted, fontSize: rf(11) }}>next ride</Text>
         </View>
       ) : (
         <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, fontWeight: "600" }}>No rides yet</Text>
@@ -60,7 +60,7 @@ function PlaceRow({ icon, title, subtitle, time, onPress, last }) {
 }
 
 function Tile({ icon, color, label, onPress }) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, rs, rf } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -68,24 +68,24 @@ function Tile({ icon, color, label, onPress }) {
       accessibilityLabel={label}
       style={({ pressed }) => ({ flex: 1, alignItems: "center", gap: spacing.sm, paddingVertical: spacing.md, borderRadius: radius.lg + 2, backgroundColor: colors.surface, opacity: pressed ? 0.7 : 1 })}
     >
-      <MaterialCommunityIcons name={icon} size={30} color={color} />
-      <Text style={{ color: colors.text, fontSize: 12, fontWeight: "600" }}>{label}</Text>
+      <MaterialCommunityIcons name={icon} size={rs(30)} color={color} />
+      <Text style={{ color: colors.text, fontSize: rf(12), fontWeight: "600" }}>{label}</Text>
     </Pressable>
   );
 }
 
 // Shown when the other mode already has a trip: you can't ride and host at the same time.
 function BusyNotice({ icon, title, text, action, onAction }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   return (
     <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 4, padding: spacing.md, gap: spacing.md }} accessibilityLiveRegion="polite">
       <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
-        <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-          <MaterialCommunityIcons name={icon} size={22} color={colors.text} />
+        <View style={{ width: rs(42), height: rs(42), borderRadius: rs(21), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+          <MaterialCommunityIcons name={icon} size={rs(22)} color={colors.text} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{title}</Text>
-          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, lineHeight: 19 }}>{text}</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, lineHeight: rf(19) }}>{text}</Text>
         </View>
       </View>
       <Pressable onPress={onAction} accessibilityRole="button" style={{ backgroundColor: colors.ink, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
@@ -97,7 +97,7 @@ function BusyNotice({ icon, title, text, action, onAction }) {
 
 // ---------- Find a ride ----------
 function FindView() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const { booking, saved, published } = useTrips();
   const [scheduling, setScheduling] = useState(false);
   const accepted = booking?.status === "accepted" ? booking : null;
@@ -124,12 +124,12 @@ function FindView() {
         accessibilityLabel="Where to?"
         style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 2, backgroundColor: colors.surface, borderRadius: radius.pill, paddingVertical: spacing.sm, paddingLeft: spacing.md + 2, paddingRight: spacing.sm }}
       >
-        <Ionicons name="search" size={20} color={colors.text} />
+        <Ionicons name="search" size={rs(20)} color={colors.text} />
         <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.lg - 2, fontWeight: "700" }}>Where to?</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.background, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm }}>
-          <Ionicons name="time-outline" size={15} color={colors.text} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4), backgroundColor: colors.background, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm }}>
+          <Ionicons name="time-outline" size={rs(15)} color={colors.text} />
           <Text style={{ color: colors.text, fontSize: fontSize.sm, fontWeight: "700" }}>Now</Text>
-          <Ionicons name="chevron-down" size={13} color={colors.text} />
+          <Ionicons name="chevron-down" size={rs(13)} color={colors.text} />
         </View>
       </Pressable>
 
@@ -144,8 +144,8 @@ function FindView() {
         <>
           <Section title="Upcoming" action="All rides" onAction={() => router.push("/rides")} />
           <Pressable onPress={() => router.push("/requested")} accessibilityRole="button" style={{ borderRadius: radius.lg + 4, borderWidth: 1, borderColor: colors.line, padding: spacing.md, gap: spacing.md, backgroundColor: colors.background }}>
-            <View style={{ alignSelf: "flex-start", backgroundColor: colors.warningSurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 2, paddingVertical: 4 }}>
-              <Text style={{ color: colors.warning, fontSize: 12, fontWeight: "800" }}>Request sent · waiting for {waiting.host.name.split(" ")[0]}</Text>
+            <View style={{ alignSelf: "flex-start", backgroundColor: colors.warningSurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 2, paddingVertical: rs(4) }}>
+              <Text style={{ color: colors.warning, fontSize: rf(12), fontWeight: "800" }}>Request sent · waiting for {waiting.host.name.split(" ")[0]}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
               <Avatar initials={waiting.host.initials} color={waiting.host.color} />
@@ -169,8 +169,8 @@ function FindView() {
         <>
           <Section title="Upcoming" action="All rides" onAction={() => router.push("/rides")} />
           <Pressable onPress={() => router.push("/accepted")} accessibilityRole="button" style={{ borderRadius: radius.lg + 4, borderWidth: 1, borderColor: colors.line, padding: spacing.md, gap: spacing.md, backgroundColor: colors.background }}>
-            <View style={{ alignSelf: "flex-start", backgroundColor: colors.greenSurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 2, paddingVertical: 4 }}>
-              <Text style={{ color: colors.green, fontSize: 12, fontWeight: "800" }}>Accepted · pickup {accepted.host.time} AM</Text>
+            <View style={{ alignSelf: "flex-start", backgroundColor: colors.greenSurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 2, paddingVertical: rs(4) }}>
+              <Text style={{ color: colors.green, fontSize: rf(12), fontWeight: "800" }}>Accepted · pickup {accepted.host.time} AM</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
               <Avatar initials={accepted.host.initials} color={accepted.host.color} />
@@ -199,8 +199,8 @@ function FindView() {
             <Tile icon="calendar-clock" color={colors.green} label="Schedule" onPress={() => setScheduling(true)} />
           </View>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.greenSurface, borderRadius: radius.lg, padding: spacing.md }}>
-            <View style={{ width: 42, height: 42, borderRadius: radius.md + 2, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="leaf-outline" size={22} color={colors.green} />
+            <View style={{ width: rs(42), height: rs(42), borderRadius: radius.md + 2, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="leaf-outline" size={rs(22)} color={colors.green} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.green, fontSize: fontSize.md, fontWeight: "800" }}>Share rides, cut traffic</Text>
@@ -227,7 +227,7 @@ function FindView() {
 
 // ---------- Offer a ride ----------
 function OfferView({ vehicle }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const { published, requests, passenger, places, booking } = useTrips();
   const riding = booking && ["requested", "accepted"].includes(booking.status) ? booking : null;
   const [when, setWhen] = useState(defaultWhen);
@@ -267,18 +267,18 @@ function OfferView({ vehicle }) {
     >
       {icon}
       <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "600" }}>{label}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "600" }}>{label}</Text>
         <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700" }}>{value}</Text>
       </View>
       {right}
     </Pressable>
   );
-  const dot = (square) => <View style={{ width: 12, height: 12, borderRadius: square ? 3 : 6, borderWidth: 2.5, borderColor: colors.text, backgroundColor: square ? colors.text : "transparent" }} />;
+  const dot = (square) => <View style={{ width: rs(12), height: rs(12), borderRadius: square ? 3 : 6, borderWidth: 2.5, borderColor: colors.text, backgroundColor: square ? colors.text : "transparent" }} />;
 
   return (
     <View style={{ gap: spacing.lg }}>
       <Pressable onPress={() => router.push("/account")} accessibilityRole="button" style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-        <MaterialCommunityIcons name={vehicle.type === "bike" ? "motorbike" : "car"} size={18} color={colors.text} />
+        <MaterialCommunityIcons name={vehicle.type === "bike" ? "motorbike" : "car"} size={rs(18)} color={colors.text} />
         <Text style={{ color: colors.text, fontWeight: "700", fontSize: fontSize.sm }}>{vehicle.model}</Text>
         <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>· {vehicle.type === "bike" ? "1 seat" : `${vehicle.seats} seats`}</Text>
         <Text style={{ marginLeft: "auto", color: colors.text, fontWeight: "700", fontSize: fontSize.sm, textDecorationLine: "underline" }}>Change</Text>
@@ -287,7 +287,7 @@ function OfferView({ vehicle }) {
       {published ? (
         <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <Ionicons name="checkmark-circle" size={24} color={colors.green} />
+            <Ionicons name="checkmark-circle" size={rs(24)} color={colors.green} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>Ride published · {published.when}</Text>
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{placeName(published.from)} → {placeName(published.to)}</Text>
@@ -311,13 +311,13 @@ function OfferView({ vehicle }) {
             dot(false),
             "Leaving from",
             placeName(places.from),
-            <Pressable onPress={swapRoute} accessibilityRole="button" accessibilityLabel="Swap leaving from and going to" hitSlop={10} style={{ width: 34, height: 34, borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="swap-vertical" size={18} color={colors.text} />
+            <Pressable onPress={swapRoute} accessibilityRole="button" accessibilityLabel="Swap leaving from and going to" hitSlop={10} style={{ width: rs(34), height: rs(34), borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="swap-vertical" size={rs(18)} color={colors.text} />
             </Pressable>,
             () => pickPlace("from"),
           )}
-          {row(dot(true), "Going to", placeName(places.to), <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: 12 }}>Change</Text>, () => pickPlace("to"))}
-          {row(<Ionicons name="calendar-outline" size={18} color={colors.text} />, "When", whenLabel(when), <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: 12 }}>Change</Text>, () => setPicking(true), true)}
+          {row(dot(true), "Going to", placeName(places.to), <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: rf(12) }}>Change</Text>, () => pickPlace("to"))}
+          {row(<Ionicons name="calendar-outline" size={rs(18)} color={colors.text} />, "When", whenLabel(when), <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: rf(12) }}>Change</Text>, () => setPicking(true), true)}
           <Pressable onPress={onPublish} accessibilityRole="button" style={({ pressed }) => ({ backgroundColor: colors.green, paddingVertical: spacing.md, alignItems: "center", opacity: pressed ? 0.85 : 1 })}>
             <Text style={{ color: colors.onGreen, fontWeight: "800", fontSize: fontSize.md }}>Publish ride</Text>
           </Pressable>
@@ -369,12 +369,12 @@ function OfferView({ vehicle }) {
               <Text style={{ color: colors.text, fontWeight: "700", fontSize: fontSize.md }}>{r.name}</Text>
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{r.rides} rides · {r.pickup} · {r.pickupTime}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+            <Ionicons name="chevron-forward" size={rs(18)} color={colors.textMuted} />
           </Pressable>
         ))
       ) : (
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }}>
-          <MaterialCommunityIcons name="seat-passenger" size={22} color={colors.text} />
+          <MaterialCommunityIcons name="seat-passenger" size={rs(22)} color={colors.text} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: "700" }}>No requests yet</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
@@ -389,16 +389,16 @@ function OfferView({ vehicle }) {
 
 // ---------- "Add your vehicle first" sheet ----------
 function NoVehicleSheet({ visible, onClose }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: colors.scrim }} onPress={onClose} accessibilityLabel="Close" />
-      <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
-        <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 4, backgroundColor: colors.line }} />
-        <Image source={carPhoto} style={{ width: "100%", height: 130, borderRadius: radius.lg }} resizeMode="cover" accessible={false} />
+      <View style={{ backgroundColor: colors.background, borderTopLeftRadius: rs(26), borderTopRightRadius: rs(26), padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
+        <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: rs(4), backgroundColor: colors.line }} />
+        <Image source={carPhoto} style={{ width: "100%", height: rs(130), borderRadius: radius.lg }} resizeMode="cover" accessible={false} />
         <Text style={{ color: colors.text, fontSize: fontSize.xl - 6, fontWeight: "800" }}>Add your vehicle to offer rides</Text>
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: 22 }}>Tell us about your bike or car once. About 2 minutes, and we can read it from your RC.</Text>
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>Tell us about your bike or car once. About 2 minutes, and we can read it from your RC.</Text>
         <Pressable
           onPress={() => {
             onClose();
@@ -420,7 +420,7 @@ function NoVehicleSheet({ visible, onClose }) {
 
 // ---------- Home ----------
 export default function Home() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const area = useArea();
   const { places } = useTrips();
   const pickup = places.pickup?.name ?? area.label;
@@ -453,9 +453,9 @@ export default function Home() {
       onPress={() => switchMode(key)}
       accessibilityRole="tab"
       accessibilityState={{ selected: mode === key }}
-      style={{ flex: 1, alignItems: "center", paddingVertical: spacing.sm + 4, borderBottomWidth: 3, borderBottomColor: mode === key ? colors.ink : "transparent", flexDirection: "row", justifyContent: "center", gap: 6 }}
+      style={{ flex: 1, alignItems: "center", paddingVertical: spacing.sm + 4, borderBottomWidth: 3, borderBottomColor: mode === key ? colors.ink : "transparent", flexDirection: "row", justifyContent: "center", gap: rs(6) }}
     >
-      <Ionicons name={icon} size={16} color={mode === key ? colors.text : colors.textMuted} />
+      <Ionicons name={icon} size={rs(16)} color={mode === key ? colors.text : colors.textMuted} />
       <Text style={{ color: mode === key ? colors.text : colors.textMuted, fontWeight: "700", fontSize: fontSize.md }}>{label}</Text>
     </Pressable>
   );
@@ -464,14 +464,14 @@ export default function Home() {
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.md, gap: spacing.lg }}>
         <Pressable onPress={() => router.push({ pathname: "/places", params: { pick: "pickup" } })} accessibilityRole="button" accessibilityLabel={`Pickup: ${pickup}. Change`} style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 2 }}>
-          <View style={{ width: 40, height: 40, borderRadius: radius.md + 2, backgroundColor: colors.primarySurface, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="location" size={20} color={colors.primary} />
+          <View style={{ width: rs(40), height: rs(40), borderRadius: radius.md + 2, backgroundColor: colors.primarySurface, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="location" size={rs(20)} color={colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "600" }}>{places.pickup ? "Pickup" : "Your location"}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "600" }}>{places.pickup ? "Pickup" : "Your location"}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
               <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "800" }} numberOfLines={1}>{pickup}</Text>
-              <Ionicons name="chevron-down" size={14} color={colors.text} />
+              <Ionicons name="chevron-down" size={rs(14)} color={colors.text} />
             </View>
           </View>
         </Pressable>
@@ -483,7 +483,7 @@ export default function Home() {
 
         {toast ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.greenSurface, borderRadius: radius.md + 2, padding: spacing.sm + 4 }} accessibilityLiveRegion="polite">
-            <Ionicons name="checkmark-circle" size={18} color={colors.green} />
+            <Ionicons name="checkmark-circle" size={rs(18)} color={colors.green} />
             <Text style={{ color: colors.green, fontWeight: "700", fontSize: fontSize.sm }}>{toast}</Text>
           </View>
         ) : null}
