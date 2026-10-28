@@ -230,11 +230,12 @@ class VehicleSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     name = serializers.CharField(min_length=2, max_length=40, required=False)
+    phone = serializers.RegexField(r"^\+?\d{10,15}$", required=False, allow_blank=True, error_messages={"invalid": "Enter a phone number like +919876543210."})
     vehicle = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["email", "name", "gender", "role", "vehicle"]
+        fields = ["email", "name", "gender", "phone", "role", "vehicle"]
         read_only_fields = ["email"]
 
     def get_vehicle(self, user) -> dict | None:
