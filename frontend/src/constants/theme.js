@@ -1,5 +1,6 @@
 // The whole app's look lives here. Change a value here and every screen follows.
-import { Appearance, useColorScheme } from "react-native";
+import { useMemo } from "react";
+import { Appearance, useColorScheme, useWindowDimensions } from "react-native";
 
 export const colors = {
   light: {
@@ -87,8 +88,29 @@ export function setAppearance(mode) {
   Appearance.setColorScheme(mode === "system" ? "unspecified" : mode);
 }
 
-// Returns the theme for the current light/dark setting.
+// The app was designed on a 420 dp wide phone. Other screens scale from that, within limits.
+const DESIGN_WIDTH = 420;
+export const sizeScale = (width) => Math.min(1.15, Math.max(0.85, width / DESIGN_WIDTH));
+// Text also follows the phone's font-size setting, but stops growing at 1.3× so layouts don't break.
+export const textScale = (width, fontScale) => sizeScale(width) * Math.min(1, 1.3 / fontScale);
+const scaled = (obj, k) => Object.fromEntries(Object.entries(obj).map(([key, v]) => [key, Math.round(v * k)]));
+
+// Theme for the current light/dark setting and screen. rs(n) scales a size, rf(n) scales a font size;
+// use them instead of plain numbers so every screen fits the phone it runs on.
 export function useTheme() {
   const scheme = useColorScheme();
-  return { colors: colors[scheme === "dark" ? "dark" : "light"], spacing, fontSize, radius };
+  const { width, fontScale } = useWindowDimensions();
+  const k = sizeScale(width);
+  const t = textScale(width, fontScale);
+  return useMemo(
+    () => ({
+      colors: colors[scheme === "dark" ? "dark" : "light"],
+      spacing: scaled(spacing, k),
+      fontSize: scaled(fontSize, t),
+      radius: { ...radius, md: Math.round(radius.md * k), lg: Math.round(radius.lg * k) },
+      rs: (n) => Math.round(n * k),
+      rf: (n) => Math.round(n * t),
+    }),
+    [scheme, k, t],
+  );
 }

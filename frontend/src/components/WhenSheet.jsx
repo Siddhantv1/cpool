@@ -10,7 +10,7 @@ const ROW = 44;
 
 // One scrolling column of the time picker (hour, minute or AM/PM).
 function Column({ items, value, onChange, format, label }) {
-  const { colors, radius } = useTheme();
+  const { colors, radius, rf } = useTheme();
   return (
     <ScrollView
       style={{ flex: 1, height: ROW * 5 }}
@@ -30,7 +30,7 @@ function Column({ items, value, onChange, format, label }) {
             accessibilityLabel={`${label} ${format(item)}`}
             style={{ height: ROW, alignItems: "center", justifyContent: "center", borderRadius: radius.md, backgroundColor: on ? colors.ink : "transparent" }}
           >
-            <Text style={{ color: on ? colors.onInk : colors.text, fontSize: 18, fontWeight: on ? "800" : "500" }}>{format(item)}</Text>
+            <Text style={{ color: on ? colors.onInk : colors.text, fontSize: rf(18), fontWeight: on ? "800" : "500" }}>{format(item)}</Text>
           </Pressable>
         );
       })}
@@ -40,7 +40,7 @@ function Column({ items, value, onChange, format, label }) {
 
 // Bottom sheet to pick the day and exact time (any minute). value: Date; onDone(Date).
 export default function WhenSheet({ visible, value, onDone, onClose, title = "When are you leaving?" }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const days = nextDays();
   const sameDay = (a, b) => a.toDateString() === b.toDateString();
@@ -57,8 +57,8 @@ export default function WhenSheet({ visible, value, onDone, onClose, title = "Wh
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: colors.scrim }} onPress={onClose} accessibilityLabel="Close" />
-      <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: spacing.md, paddingBottom: insets.bottom + spacing.md, gap: spacing.md }}>
-        <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 4, backgroundColor: colors.line }} />
+      <View style={{ backgroundColor: colors.background, borderTopLeftRadius: rs(26), borderTopRightRadius: rs(26), paddingTop: spacing.md, paddingBottom: insets.bottom + spacing.md, gap: spacing.md }}>
+        <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: rs(4), backgroundColor: colors.line }} />
         <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.lg, fontWeight: "800", paddingHorizontal: spacing.lg }}>{title}</Text>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}>
@@ -70,7 +70,7 @@ export default function WhenSheet({ visible, value, onDone, onClose, title = "Wh
                 onPress={() => setDay(d)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: on }}
-                style={{ height: 42, justifyContent: "center", paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1.5, borderColor: on ? colors.ink : colors.line, backgroundColor: on ? colors.ink : colors.background }}
+                style={{ height: rs(42), justifyContent: "center", paddingHorizontal: spacing.md, borderRadius: radius.pill, borderWidth: 1.5, borderColor: on ? colors.ink : colors.line, backgroundColor: on ? colors.ink : colors.background }}
               >
                 <Text style={{ color: on ? colors.onInk : colors.text, fontWeight: "700" }}>{dayLabel(d)}</Text>
               </Pressable>
@@ -80,7 +80,7 @@ export default function WhenSheet({ visible, value, onDone, onClose, title = "Wh
 
         <View style={{ flexDirection: "row", gap: spacing.sm, marginHorizontal: spacing.lg, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.surface }}>
           <Column label="Hour" items={HOURS} value={hour} onChange={setHour} format={String} />
-          <Text style={{ color: colors.text, fontSize: 22, fontWeight: "800", alignSelf: "center" }}>:</Text>
+          <Text style={{ color: colors.text, fontSize: rf(22), fontWeight: "800", alignSelf: "center" }}>:</Text>
           <Column label="Minute" items={MINUTES} value={minute} onChange={setMinute} format={(m) => String(m).padStart(2, "0")} />
           <Column label="AM or PM" items={[false, true]} value={pm} onChange={setPm} format={(p) => (p ? "PM" : "AM")} />
         </View>

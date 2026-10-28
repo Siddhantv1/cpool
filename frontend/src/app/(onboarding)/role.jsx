@@ -15,7 +15,7 @@ const hostPhoto = require("../../../assets/images/onboarding/host.jpg");
 
 // Photo card, same shape as the approved design (240 x 176), with a colour fade from the left so the text stays readable.
 function RoleCard({ photo, shade, tint, title, text, loading, onPress }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -35,29 +35,29 @@ function RoleCard({ photo, shade, tint, title, text, loading, onPress }) {
       />
       <View style={{ flex: 1, padding: spacing.md + 4, width: "66%", gap: spacing.xs }}>
         <Text style={{ color: colors.onImage, fontSize: fontSize.lg + 4, fontWeight: "900", marginTop: "auto" }}>{title}</Text>
-        <Text style={{ color: colors.onImage, opacity: 0.88, fontSize: fontSize.sm, lineHeight: 18 }}>{text}</Text>
+        <Text style={{ color: colors.onImage, opacity: 0.88, fontSize: fontSize.sm, lineHeight: rf(18) }}>{text}</Text>
       </View>
       <View
         style={{
           position: "absolute",
           right: spacing.md,
           bottom: spacing.md,
-          width: 40,
-          height: 40,
+          width: rs(40),
+          height: rs(40),
           borderRadius: radius.pill,
           backgroundColor: colors.onImage,
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        {loading ? <ActivityIndicator color={colors.onImageInk} /> : <Ionicons name="arrow-forward" size={20} color={colors.onImageInk} />}
+        {loading ? <ActivityIndicator color={colors.onImageInk} /> : <Ionicons name="arrow-forward" size={rs(20)} color={colors.onImageInk} />}
       </View>
     </Pressable>
   );
 }
 
 export default function Role() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -83,14 +83,14 @@ export default function Role() {
   return (
     <Screen>
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-        <Image source={logo} style={{ width: 32, height: 32 }} accessible={false} />
+        <Image source={logo} style={{ width: rs(32), height: rs(32) }} accessible={false} />
         <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "800" }}>Cpool</Text>
       </View>
       <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-        <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xxl, fontWeight: "900", lineHeight: 38 }}>
+        <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xxl, fontWeight: "900", lineHeight: rf(38) }}>
           How will you use Cpool?
         </Text>
-        <LinearGradient colors={[colors.success, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: 48, height: 5, borderRadius: radius.pill }} />
+        <LinearGradient colors={[colors.success, colors.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ width: rs(48), height: rs(5), borderRadius: radius.pill }} />
       </View>
       <RoleCard
         photo={guestPhoto}

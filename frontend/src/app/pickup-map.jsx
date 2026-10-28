@@ -16,7 +16,7 @@ import { useArea } from "../lib/useArea";
 // closest point on it (dotted), then the ride to the office.
 // shortcut: hosts and their start points are example data; real routes come from the backend's ride data.
 export default function PickupMap() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs } = useTheme();
   const insets = useSafeAreaInsets();
   const { id, office } = useLocalSearchParams();
   useTrips(); // re-render when the chosen pickup changes
@@ -42,7 +42,7 @@ export default function PickupMap() {
           done={plan?.toMeet.coords}
           walks={walk ? [walk.coords] : []}
           pins={pins}
-          vehicle={plan ? { point: h.start, heading: 0, type: h.type } : null} padding={{ top: 90, bottom: 40, left: 50, right: 50 }} />
+          vehicle={plan ? { point: h.start, heading: 0, type: h.type } : null} padding={{ top: rs(90), bottom: rs(40), left: rs(50), right: rs(50) }} />
         <View style={{ position: "absolute", top: insets.top + spacing.sm, left: spacing.md }}>
           <RoundButton icon="arrow-back" label="Go back" onPress={goBack} />
         </View>
@@ -53,8 +53,8 @@ export default function PickupMap() {
           <Avatar initials={h.initials} color={h.color} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{h.name}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <MaterialCommunityIcons name={h.type === "bike" ? "motorbike" : "car"} size={14} color={colors.textMuted} />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
+              <MaterialCommunityIcons name={h.type === "bike" ? "motorbike" : "car"} size={rs(14)} color={colors.textMuted} />
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>
                 {h.vehicle} · from {h.from}
               </Text>
@@ -69,12 +69,12 @@ export default function PickupMap() {
         />
         {walk ? (
           <Pressable onPress={walkDirections} accessibilityRole="button" style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.sm, backgroundColor: colors.ink, borderRadius: radius.lg, paddingVertical: spacing.md }}>
-            <Ionicons name="walk" size={18} color={colors.onInk} />
+            <Ionicons name="walk" size={rs(18)} color={colors.onInk} />
             <Text style={{ color: colors.onInk, fontWeight: "800", fontSize: fontSize.md }}>Open in Google Maps</Text>
           </Pressable>
         ) : plan && !needsWalk ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }}>
-            <Ionicons name="location" size={18} color={colors.text} />
+            <Ionicons name="location" size={rs(18)} color={colors.text} />
             <Text style={{ flex: 1, color: colors.text, fontSize: fontSize.sm }}>{h.name.split(" ")[0]}’s route passes right where you are.</Text>
           </View>
         ) : null}

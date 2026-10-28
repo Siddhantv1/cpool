@@ -9,7 +9,7 @@ import { clockPlus, useRoute } from "../lib/directions";
 import { useTrips } from "../lib/trips";
 
 export default function Accepted() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const { booking } = useTrips();
   const ride = useRoute(booking ? [booking.pickup.coords, booking.drop.coords] : null);
@@ -22,16 +22,16 @@ export default function Accepted() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <StatusHeader tone="success" stamp="ACCEPTED" title={`You're riding with ${h.name.split(" ")[0]}`} subtitle={`Tomorrow · pickup ${h.time} AM`} />
-        <View style={{ flex: 1, marginTop: -24, backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.lg }}>
+        <View style={{ flex: 1, marginTop: -rs(24), backgroundColor: colors.background, borderTopLeftRadius: rs(24), borderTopRightRadius: rs(24), padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.lg }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <Avatar initials={h.initials} color={h.color} size={46} />
+            <Avatar initials={h.initials} color={h.color} size={rs(46)} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md + 1 }}>{h.name}</Text>
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{h.vehicle}</Text>
             </View>
             <Plate text={h.plate} />
           </View>
-          <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>YOUR TRIP</Text>
+          <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>YOUR TRIP</Text>
           <Stops
             stops={[
               { title: booking.pickup.name, subtitle: "Pickup", time: h.time },
@@ -39,7 +39,7 @@ export default function Accepted() {
             ]}
           />
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 2, backgroundColor: colors.greenSurface, borderRadius: radius.lg, padding: spacing.md }}>
-            <Ionicons name="alarm-outline" size={19} color={colors.green} />
+            <Ionicons name="alarm-outline" size={rs(19)} color={colors.green} />
             <Text style={{ color: colors.green, fontWeight: "600", flex: 1 }}>We’ll remind you 15 minutes before pickup.</Text>
           </View>
           <View style={{ flex: 1 }} />

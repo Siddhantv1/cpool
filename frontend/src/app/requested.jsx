@@ -12,7 +12,7 @@ import { confirmWithdraw, declineBooking, useTrips } from "../lib/trips";
 
 // Waiting for the host to answer a seat request.
 export default function Requested() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs } = useTheme();
   const { booking } = useTrips();
   const [seconds, setSeconds] = useState(0);
   const [pulse] = useState(() => new Animated.Value(0));
@@ -49,8 +49,8 @@ export default function Requested() {
 
   const step = (done, active, title, subtitle) => (
     <View style={{ flexDirection: "row", gap: spacing.md, alignItems: "center" }}>
-      <View style={{ width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: done ? colors.green : active ? colors.primarySurface : colors.surface }}>
-        {done ? <Ionicons name="checkmark" size={14} color={colors.onGreen} /> : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: active ? colors.primary : colors.border }} />}
+      <View style={{ width: rs(24), height: rs(24), borderRadius: rs(12), alignItems: "center", justifyContent: "center", backgroundColor: done ? colors.green : active ? colors.primarySurface : colors.surface }}>
+        {done ? <Ionicons name="checkmark" size={rs(14)} color={colors.onGreen} /> : <View style={{ width: rs(8), height: rs(8), borderRadius: rs(4), backgroundColor: active ? colors.primary : colors.border }} />}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ color: done || active ? colors.text : colors.textMuted, fontWeight: "700" }}>{title}</Text>
@@ -62,26 +62,26 @@ export default function Requested() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
-        <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel="Go back" style={{ width: 38, height: 38, borderRadius: radius.md + 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
+        <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel="Go back" style={{ width: rs(38), height: rs(38), borderRadius: radius.md + 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name="chevron-back" size={rs(20)} color={colors.text} />
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.lg, gap: spacing.lg }}>
         <View style={{ alignItems: "center", gap: spacing.sm }}>
-          <View style={{ width: 132, height: 132, alignItems: "center", justifyContent: "center" }}>
+          <View style={{ width: rs(132), height: rs(132), alignItems: "center", justifyContent: "center" }}>
             <Animated.View
               style={{
                 position: "absolute",
-                width: 132,
-                height: 132,
-                borderRadius: 66,
+                width: rs(132),
+                height: rs(132),
+                borderRadius: rs(66),
                 backgroundColor: colors.primary,
                 opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] }),
                 transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) }],
               }}
             />
-            <Avatar initials={h.initials} color={h.color} size={76} />
+            <Avatar initials={h.initials} color={h.color} size={rs(76)} />
           </View>
           <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xl - 4, fontWeight: "800" }}>Request sent</Text>
           <Text style={{ color: colors.textMuted, fontSize: fontSize.md, textAlign: "center" }} accessibilityLiveRegion="polite">
@@ -97,7 +97,7 @@ export default function Requested() {
 
         <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 4, padding: spacing.md, gap: spacing.md }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <MaterialCommunityIcons name={h.type === "bike" ? "motorbike" : "car"} size={22} color={colors.text} />
+            <MaterialCommunityIcons name={h.type === "bike" ? "motorbike" : "car"} size={rs(22)} color={colors.text} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: "700" }}>{h.name}</Text>
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{h.vehicle}</Text>
@@ -115,7 +115,7 @@ export default function Requested() {
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
           <Pressable onPress={() => call(h.phone)} accessibilityRole="button" style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.md }}>
-            <Ionicons name="call-outline" size={18} color={colors.text} />
+            <Ionicons name="call-outline" size={rs(18)} color={colors.text} />
             <Text style={{ color: colors.text, fontWeight: "800" }}>Call {firstName}</Text>
           </Pressable>
           <Pressable onPress={withdraw} accessibilityRole="button" style={{ flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.danger, borderRadius: radius.lg, paddingVertical: spacing.md }}>

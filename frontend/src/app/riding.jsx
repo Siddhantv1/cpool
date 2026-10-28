@@ -13,7 +13,7 @@ import { useMovement } from "../lib/useMovement";
 
 // On the way to the office after pickup.
 export default function Riding() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs } = useTheme();
   const insets = useSafeAreaInsets();
   const booking = getTrips().booking;
   const h = booking?.host ?? HOSTS[0];
@@ -66,8 +66,8 @@ export default function Riding() {
           </View>
           <Plate text={h.plate} />
         </View>
-        <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surface, overflow: "hidden" }} accessible accessibilityLabel={`Trip ${Math.round(move.t * 100)}% done`}>
-          <View style={{ width: `${Math.max(6, move.t * 100)}%`, height: "100%", backgroundColor: colors.green, borderRadius: 3 }} />
+        <View style={{ height: rs(6), borderRadius: rs(3), backgroundColor: colors.surface, overflow: "hidden" }} accessible accessibilityLabel={`Trip ${Math.round(move.t * 100)}% done`}>
+          <View style={{ width: `${Math.max(6, move.t * 100)}%`, height: "100%", backgroundColor: colors.green, borderRadius: rs(3) }} />
         </View>
         <Stops
           stops={[
@@ -76,8 +76,8 @@ export default function Riding() {
           ]}
         />
         {arrived ? (
-          <Pressable onPress={done} accessibilityRole="button" style={{ backgroundColor: colors.green, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 6 }}>
-            <Ionicons name="checkmark-circle" size={18} color={colors.onGreen} />
+          <Pressable onPress={done} accessibilityRole="button" style={{ backgroundColor: colors.green, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: rs(6) }}>
+            <Ionicons name="checkmark-circle" size={rs(18)} color={colors.onGreen} />
             <Text style={{ color: colors.onGreen, fontWeight: "800", fontSize: fontSize.md }}>Done</Text>
           </Pressable>
         ) : (

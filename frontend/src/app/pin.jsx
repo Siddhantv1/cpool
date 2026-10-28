@@ -18,7 +18,7 @@ const TITLES = { pickup: "Confirm pickup", from: "Confirm start", to: "Confirm d
 
 // Drop a pin: move the map under the fixed pin, then confirm. Opened from the places screen.
 export default function Pin() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const scheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const { pick } = useLocalSearchParams();
@@ -92,11 +92,11 @@ export default function Pin() {
         )}
         {/* The pin's tip sits exactly on the map centre. */}
         <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" }}>
-          <View style={{ alignItems: "center", marginBottom: 46 }}>
-            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.onInk }} />
+          <View style={{ alignItems: "center", marginBottom: rs(46) }}>
+            <View style={{ width: rs(34), height: rs(34), borderRadius: rs(17), backgroundColor: colors.ink, alignItems: "center", justifyContent: "center" }}>
+              <View style={{ width: rs(10), height: rs(10), borderRadius: rs(5), backgroundColor: colors.onInk }} />
             </View>
-            <View style={{ width: 3, height: 12, backgroundColor: colors.ink }} />
+            <View style={{ width: rs(3), height: rs(12), backgroundColor: colors.ink }} />
           </View>
         </View>
         <View style={{ position: "absolute", top: insets.top + spacing.sm, left: spacing.md }}>
@@ -108,9 +108,9 @@ export default function Pin() {
       </View>
 
       <MapSheet>
-        <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>MOVE THE MAP TO PLACE THE PIN</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: 44 }}>
-          <Ionicons name="location" size={22} color={colors.text} />
+        <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>MOVE THE MAP TO PLACE THE PIN</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, minHeight: rs(44) }}>
+          <Ionicons name="location" size={rs(22)} color={colors.text} />
           {center && !label ? (
             <ActivityIndicator color={colors.text} />
           ) : (

@@ -40,7 +40,7 @@ export default function VehicleDetails() {
   const { mode } = useLocalSearchParams();
   const fromRc = mode === "rc";
   const draft = getDraft();
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs } = useTheme();
   const [number, setNumber] = useState("");
   const [model, setModel] = useState("");
   const [mfgMonth, setMfgMonth] = useState(null);
@@ -101,11 +101,11 @@ export default function VehicleDetails() {
         }
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.successSurface, borderRadius: radius.md + 2, padding: spacing.sm + 4 }}>
-          <Ionicons name="checkmark" size={18} color={colors.success} />
+          <Ionicons name="checkmark" size={rs(18)} color={colors.success} />
           <Text style={{ color: colors.success, fontSize: fontSize.sm, fontWeight: "600" }}>Read from your RC</Text>
         </View>
         {draft.rcPhoto ? (
-          <Image source={{ uri: draft.rcPhoto }} style={{ height: 120, borderRadius: radius.lg }} resizeMode="cover" accessibilityLabel="Your RC photo" />
+          <Image source={{ uri: draft.rcPhoto }} style={{ height: rs(120), borderRadius: radius.lg }} resizeMode="cover" accessibilityLabel="Your RC photo" />
         ) : null}
         <DetailRows rows={rows} />
         <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>These come from your RC and can&apos;t be edited.</Text>

@@ -34,7 +34,7 @@ function applyFilters(hosts, { sort, vehicle, helmet }) {
 }
 
 function FilterSheet({ value, onDone, onClose }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const [f, setF] = useState(value);
   const chip = (on, label, onPress) => (
@@ -55,12 +55,12 @@ function FilterSheet({ value, onDone, onClose }) {
       <Text style={{ color: on ? colors.onInk : colors.text, fontWeight: "700" }}>{label}</Text>
     </Pressable>
   );
-  const label = (text) => <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>{text}</Text>;
+  const label = (text) => <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>{text}</Text>;
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: colors.scrim }} onPress={onClose} accessibilityLabel="Close" />
-      <View style={{ backgroundColor: colors.background, borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
-        <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 4, backgroundColor: colors.line }} />
+      <View style={{ backgroundColor: colors.background, borderTopLeftRadius: rs(26), borderTopRightRadius: rs(26), padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
+        <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: rs(4), backgroundColor: colors.line }} />
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           <Text accessibilityRole="header" style={{ flex: 1, color: colors.text, fontSize: fontSize.lg, fontWeight: "800" }}>
             Filters
@@ -84,11 +84,11 @@ function FilterSheet({ value, onDone, onClose }) {
 }
 
 function HostCard({ host, requested, onRequest, officeId }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const vehicleIcon = host.type === "bike" ? "motorbike" : "car";
   const leg = (icon, text, mc) => (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-      {mc ? <MaterialCommunityIcons name={icon} size={16} color={colors.primary} /> : <MaterialCommunityIcons name="walk" size={15} color={colors.text} />}
+    <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
+      {mc ? <MaterialCommunityIcons name={icon} size={rs(16)} color={colors.primary} /> : <MaterialCommunityIcons name="walk" size={rs(15)} color={colors.text} />}
       <Text style={{ color: mc ? colors.primary : colors.text, fontWeight: "700", fontSize: fontSize.sm }}>{text}</Text>
     </View>
   );
@@ -96,14 +96,14 @@ function HostCard({ host, requested, onRequest, officeId }) {
   return (
     <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 6, padding: spacing.md, gap: spacing.md, backgroundColor: colors.background }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-        <Avatar initials={host.initials} color={host.color} size={46} />
+        <Avatar initials={host.initials} color={host.color} size={rs(46)} />
         <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: rs(5) }}>
             <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{host.name}</Text>
-            <Ionicons name="checkmark-circle" size={15} color={colors.primary} accessibilityLabel="Verified" />
+            <Ionicons name="checkmark-circle" size={rs(15)} color={colors.primary} accessibilityLabel="Verified" />
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-            <MaterialCommunityIcons name={vehicleIcon} size={14} color={colors.primary} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
+            <MaterialCommunityIcons name={vehicleIcon} size={rs(14)} color={colors.primary} />
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>
               {host.vehicle}
             </Text>
@@ -111,15 +111,15 @@ function HostCard({ host, requested, onRequest, officeId }) {
         </View>
         <View style={{ alignItems: "flex-end" }}>
           <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.lg }}>{host.time}</Text>
-          <Text style={{ color: colors.textMuted, fontSize: 11 }}>leaves</Text>
+          <Text style={{ color: colors.textMuted, fontSize: rf(11) }}>leaves</Text>
         </View>
         <Pressable
           onPress={() => call(host.phone)}
           accessibilityRole="button"
           accessibilityLabel={`Call ${host.name}`}
-          style={{ width: 38, height: 38, borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}
+          style={{ width: rs(38), height: rs(38), borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}
         >
-          <Ionicons name="call-outline" size={17} color={colors.text} />
+          <Ionicons name="call-outline" size={rs(17)} color={colors.text} />
         </Pressable>
       </View>
 
@@ -131,27 +131,27 @@ function HostCard({ host, requested, onRequest, officeId }) {
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           {leg("walk", host.walkTo)}
-          <Ionicons name="chevron-forward" size={12} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={rs(12)} color={colors.textMuted} />
           {leg(vehicleIcon, host.ride, true)}
-          <Ionicons name="chevron-forward" size={12} color={colors.textMuted} />
+          <Ionicons name="chevron-forward" size={rs(12)} color={colors.textMuted} />
           {leg("walk", host.walkFrom)}
         </View>
-        <View style={{ flexDirection: "row", gap: 6 }} accessibilityLabel={`${host.seatsFree} of ${host.seatsTotal} seats free`}>
+        <View style={{ flexDirection: "row", gap: rs(6) }} accessibilityLabel={`${host.seatsFree} of ${host.seatsTotal} seats free`}>
           {Array.from({ length: host.seatsTotal }, (_, i) => (
-            <View key={i} style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", opacity: i < host.seatsFree ? 1 : 0.35 }}>
-              <MaterialCommunityIcons name="seat-passenger" size={14} color={colors.text} />
+            <View key={i} style={{ width: rs(26), height: rs(26), borderRadius: rs(13), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", opacity: i < host.seatsFree ? 1 : 0.35 }}>
+              <MaterialCommunityIcons name="seat-passenger" size={rs(14)} color={colors.text} />
             </View>
           ))}
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <Ionicons name="map-outline" size={13} color={colors.primary} />
-          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>See pickup on map</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
+          <Ionicons name="map-outline" size={rs(13)} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontSize: rf(12), fontWeight: "700" }}>See pickup on map</Text>
         </View>
       </Pressable>
 
       {host.helmet ? (
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-          <MaterialCommunityIcons name="racing-helmet" size={15} color={colors.textMuted} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: rs(6) }}>
+          <MaterialCommunityIcons name="racing-helmet" size={rs(15)} color={colors.textMuted} />
           <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Carries a spare helmet</Text>
         </View>
       ) : null}
@@ -170,7 +170,7 @@ function HostCard({ host, requested, onRequest, officeId }) {
             opacity: pressed ? 0.85 : 1,
             flexDirection: "row",
             alignItems: "center",
-            gap: 6,
+            gap: rs(6),
           })}
         >
           {requested ? <ActivityIndicator size="small" color={colors.text} /> : null}
@@ -185,7 +185,7 @@ function HostCard({ host, requested, onRequest, officeId }) {
 const officeIndex = (name) => (name ? OFFICES.findIndex((o) => String(name).includes(o.short)) : -1);
 
 export default function Results() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const { to, when = "Tomorrow · 9:00 AM" } = useLocalSearchParams();
   const { booking, places, published } = useTrips();
   const area = useArea();
@@ -246,18 +246,18 @@ export default function Results() {
           onPress={goBack}
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          style={{ width: 38, height: 38, borderRadius: radius.md + 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}
+          style={{ width: rs(38), height: rs(38), borderRadius: radius.md + 2, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}
         >
-          <Ionicons name="chevron-back" size={20} color={colors.text} />
+          <Ionicons name="chevron-back" size={rs(20)} color={colors.text} />
         </Pressable>
         <View style={{ flex: 1, alignItems: "center" }}>
           <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "800" }}>
             {!shown ? "Finding rides…" : hosts.length ? `${shown.length} ride${shown.length === 1 ? "" : "s"} available` : "No rides yet"}
           </Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+          <Text style={{ color: colors.textMuted, fontSize: rf(12) }} numberOfLines={1}>
             {when}
           </Text>
-          <Text style={{ color: colors.textMuted, fontSize: 12 }} numberOfLines={1} accessibilityLabel={`From ${fromLabel} to ${toLabel}`}>
+          <Text style={{ color: colors.textMuted, fontSize: rf(12) }} numberOfLines={1} accessibilityLabel={`From ${fromLabel} to ${toLabel}`}>
             {fromLabel} → {toLabel}
           </Text>
         </View>
@@ -265,19 +265,19 @@ export default function Results() {
           onPress={() => setFiltering(true)}
           accessibilityRole="button"
           accessibilityLabel={active ? `Filters, ${active} on` : "Filters"}
-          style={{ width: 38, height: 38, borderRadius: radius.md + 2, backgroundColor: active ? colors.ink : colors.surface, alignItems: "center", justifyContent: "center" }}
+          style={{ width: rs(38), height: rs(38), borderRadius: radius.md + 2, backgroundColor: active ? colors.ink : colors.surface, alignItems: "center", justifyContent: "center" }}
         >
-          <Ionicons name="options-outline" size={19} color={active ? colors.onInk : colors.text} />
+          <Ionicons name="options-outline" size={rs(19)} color={active ? colors.onInk : colors.text} />
           {active ? (
-            <View style={{ position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: colors.onGreen, fontSize: 11, fontWeight: "800" }}>{active}</Text>
+            <View style={{ position: "absolute", top: -rs(4), right: -rs(4), minWidth: rs(18), height: rs(18), borderRadius: rs(9), backgroundColor: colors.green, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ color: colors.onGreen, fontSize: rf(11), fontWeight: "800" }}>{active}</Text>
             </View>
           ) : null}
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
-        {!officeToOffice ? <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>{side === "to" ? "GOING TO" : "LEAVING FROM"}</Text> : null}
+        {!officeToOffice ? <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>{side === "to" ? "GOING TO" : "LEAVING FROM"}</Text> : null}
         {!officeToOffice ? (
           <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: -spacing.sm }} accessibilityRole="tablist">
             {OFFICES.map((o, i) => (
@@ -301,13 +301,13 @@ export default function Results() {
         {hosts === null ? <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.text} /> : shown.map((h) => <HostCard key={h.id} host={h} requested={pending === h.id} onRequest={() => request(h.id)} officeId={officeId} />)}
         {hosts && !hosts.length ? (
           <View style={{ alignItems: "center", gap: spacing.md, marginTop: spacing.xl * 2, paddingHorizontal: spacing.md }}>
-            <View style={{ width: 96, height: 96, borderRadius: 48, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="time-outline" size={44} color={colors.textMuted} />
+            <View style={{ width: rs(96), height: rs(96), borderRadius: rs(48), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="time-outline" size={rs(44)} color={colors.textMuted} />
             </View>
             <Text accessibilityRole="header" style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.lg - 2, textAlign: "center" }}>
               No one is driving at {when.split(" · ").pop()} yet
             </Text>
-            <Text style={{ color: colors.textMuted, textAlign: "center", lineHeight: 21 }}>Try a nearby time, or the other office. We can also alert you as soon as a ride is published.</Text>
+            <Text style={{ color: colors.textMuted, textAlign: "center", lineHeight: rf(21) }}>Try a nearby time, or the other office. We can also alert you as soon as a ride is published.</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: spacing.sm }}>
               {nearbyTimes(when).map((t) => (
                 <Pressable
@@ -340,7 +340,7 @@ export default function Results() {
                 paddingVertical: spacing.md - 2,
               }}
             >
-              {notify ? <Ionicons name="checkmark-circle" size={18} color={colors.green} /> : null}
+              {notify ? <Ionicons name="checkmark-circle" size={rs(18)} color={colors.green} /> : null}
               <Text style={{ color: notify ? colors.green : colors.onInk, fontWeight: "800" }} accessibilityLiveRegion="polite">
                 {notify ? "We’ll notify you" : "Notify me about this trip"}
               </Text>
@@ -349,7 +349,7 @@ export default function Results() {
         ) : null}
         {hosts?.length > 0 && !shown.length ? (
           <View style={{ alignItems: "center", gap: spacing.sm, marginTop: spacing.xl }}>
-            <Ionicons name="funnel-outline" size={32} color={colors.textMuted} />
+            <Ionicons name="funnel-outline" size={rs(32)} color={colors.textMuted} />
             <Text style={{ color: colors.text, fontWeight: "700" }}>No rides match your filters</Text>
             <Pressable onPress={() => setFilters(DEFAULT_FILTERS)} accessibilityRole="button">
               <Text style={{ color: colors.primary, fontWeight: "700" }}>Clear filters</Text>

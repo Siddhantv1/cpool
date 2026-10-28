@@ -25,35 +25,35 @@ const DAY = 24 * 60 * 60 * 1000;
 
 // Person photo (initials) with a small coloured badge showing what happened.
 function AlertIcon({ alert }) {
-  const { colors } = useTheme();
+  const { colors, rs } = useTheme();
   const k = KIND[alert.kind];
   const tone = colors[k.tone];
   return (
-    <View style={{ width: 48, height: 48 }}>
+    <View style={{ width: rs(48), height: rs(48) }}>
       {alert.who ? (
-        <Avatar initials={alert.who.initials} color={alert.who.color} size={48} />
+        <Avatar initials={alert.who.initials} color={alert.who.color} size={rs(48)} />
       ) : (
         <View
           style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
+            width: rs(48),
+            height: rs(48),
+            borderRadius: rs(24),
             backgroundColor: colors.surface,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Ionicons name="car-outline" size={22} color={colors.text} />
+          <Ionicons name="car-outline" size={rs(22)} color={colors.text} />
         </View>
       )}
       <View
         style={{
           position: "absolute",
-          right: -3,
-          bottom: -3,
-          width: 22,
-          height: 22,
-          borderRadius: 11,
+          right: -rs(3),
+          bottom: -rs(3),
+          width: rs(22),
+          height: rs(22),
+          borderRadius: rs(11),
           backgroundColor: tone,
           borderWidth: 2,
           borderColor: colors.background,
@@ -61,7 +61,7 @@ function AlertIcon({ alert }) {
           justifyContent: "center",
         }}
       >
-        <Ionicons name={k.icon} size={11} color={colors.onImage} />
+        <Ionicons name={k.icon} size={rs(11)} color={colors.onImage} />
       </View>
     </View>
   );
@@ -71,7 +71,7 @@ function AlertIcon({ alert }) {
 const SwipeSpace = ({ width }) => <View style={{ width }} />;
 
 function SmallButton({ title, onPress, kind = "plain" }) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, rf } = useTheme();
   const bg = { green: colors.green, ink: colors.ink, plain: colors.surface }[kind];
   const fg = { green: colors.onGreen, ink: colors.onInk, plain: colors.text }[kind];
   return (
@@ -86,13 +86,13 @@ function SmallButton({ title, onPress, kind = "plain" }) {
         opacity: pressed ? 0.8 : 1,
       })}
     >
-      <Text style={{ color: fg, fontWeight: "800", fontSize: 13 }}>{title}</Text>
+      <Text style={{ color: fg, fontWeight: "800", fontSize: rf(13) }}>{title}</Text>
     </Pressable>
   );
 }
 
 export default function Alerts() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const { alerts, requests, booking } = useTrips();
   const [tab, setTab] = useState("all");
   const rowWidth = useWindowDimensions().width - spacing.lg * 2;
@@ -188,15 +188,15 @@ export default function Alerts() {
             accessibilityRole="button"
             accessibilityLabel="Alert settings"
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
+              width: rs(40),
+              height: rs(40),
+              borderRadius: rs(20),
               backgroundColor: colors.surface,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Ionicons name="settings-outline" size={19} color={colors.text} />
+            <Ionicons name="settings-outline" size={rs(19)} color={colors.text} />
           </Pressable>
         </View>
 
@@ -205,7 +205,7 @@ export default function Alerts() {
             flexDirection: "row",
             backgroundColor: colors.surface,
             borderRadius: radius.md + 2,
-            padding: 3,
+            padding: rs(3),
           }}
           accessibilityRole="tablist"
         >
@@ -223,7 +223,7 @@ export default function Alerts() {
                   flexDirection: "row",
                   justifyContent: "center",
                   alignItems: "center",
-                  gap: 6,
+                  gap: rs(6),
                   paddingVertical: spacing.sm + 2,
                   borderRadius: radius.md,
                   backgroundColor: on ? colors.background : "transparent",
@@ -240,10 +240,10 @@ export default function Alerts() {
                 {n ? (
                   <View
                     style={{
-                      minWidth: 18,
-                      height: 18,
-                      paddingHorizontal: 5,
-                      borderRadius: 9,
+                      minWidth: rs(18),
+                      height: rs(18),
+                      paddingHorizontal: rs(5),
+                      borderRadius: rs(9),
                       backgroundColor: colors.danger,
                       alignItems: "center",
                       justifyContent: "center",
@@ -252,7 +252,7 @@ export default function Alerts() {
                     <Text
                       style={{
                         color: colors.onImage,
-                        fontSize: 11,
+                        fontSize: rf(11),
                         fontWeight: "800",
                       }}
                     >
@@ -279,7 +279,7 @@ export default function Alerts() {
               <Text
                 style={{
                   color: colors.textMuted,
-                  fontSize: 11,
+                  fontSize: rf(11),
                   fontWeight: "800",
                   letterSpacing: 1,
                   marginBottom: spacing.xs,
@@ -324,7 +324,7 @@ export default function Alerts() {
                     })}
                   >
                     <AlertIcon alert={a} />
-                    <View style={{ flex: 1, gap: 3 }}>
+                    <View style={{ flex: 1, gap: rs(3) }}>
                       <View
                         style={{
                           flexDirection: "row",
@@ -345,7 +345,7 @@ export default function Alerts() {
                         <Text
                           style={{
                             color: colors.textMuted,
-                            fontSize: 12,
+                            fontSize: rf(12),
                             marginTop: 2,
                           }}
                         >
@@ -356,7 +356,7 @@ export default function Alerts() {
                         style={{
                           color: colors.textMuted,
                           fontSize: fontSize.sm,
-                          lineHeight: 19,
+                          lineHeight: rf(19),
                         }}
                       >
                         {a.text}
@@ -410,15 +410,15 @@ export default function Alerts() {
           >
             <View
               style={{
-                width: 96,
-                height: 96,
-                borderRadius: 48,
+                width: rs(96),
+                height: rs(96),
+                borderRadius: rs(48),
                 backgroundColor: colors.surface,
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Ionicons name="notifications-outline" size={40} color={colors.textMuted} />
+              <Ionicons name="notifications-outline" size={rs(40)} color={colors.textMuted} />
             </View>
             <Text
               style={{
@@ -434,7 +434,7 @@ export default function Alerts() {
               style={{
                 color: colors.textMuted,
                 textAlign: "center",
-                lineHeight: 20,
+                lineHeight: rf(20),
               }}
             >
               {tab === "requests" ? "When colleagues ask for a seat in your ride, you’ll see it here." : "Ride confirmations, changes and seat requests will show up here."}
@@ -445,7 +445,7 @@ export default function Alerts() {
           <Text
             style={{
               color: colors.textMuted,
-              fontSize: 12,
+              fontSize: rf(12),
               textAlign: "center",
             }}
           >

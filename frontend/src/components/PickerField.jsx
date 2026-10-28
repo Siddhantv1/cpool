@@ -7,7 +7,7 @@ import { useTheme } from "../constants/theme";
 // Looks like a text field; tapping it opens a bottom sheet with a list to pick from.
 // options = [{ label, value }]
 export default function PickerField({ label, value, options, onChange }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs } = useTheme();
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
@@ -30,7 +30,7 @@ export default function PickerField({ label, value, options, onChange }) {
         }}
       >
         <Text style={{ color: selected ? colors.text : colors.textMuted, fontSize: fontSize.md }}>{selected ? selected.label : label}</Text>
-        <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
+        <Ionicons name="chevron-down" size={rs(18)} color={colors.textMuted} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
@@ -45,7 +45,7 @@ export default function PickerField({ label, value, options, onChange }) {
             maxHeight: "60%",
           }}
         >
-          <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: radius.pill, backgroundColor: colors.border, marginBottom: spacing.sm }} />
+          <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: radius.pill, backgroundColor: colors.border, marginBottom: spacing.sm }} />
           <Text style={{ color: colors.text, fontSize: fontSize.lg, fontWeight: "800", paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
             {label}
           </Text>
@@ -68,7 +68,7 @@ export default function PickerField({ label, value, options, onChange }) {
                 })}
               >
                 <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: o.value === value ? "700" : "400" }}>{o.label}</Text>
-                {o.value === value ? <Ionicons name="checkmark" size={20} color={colors.primary} /> : null}
+                {o.value === value ? <Ionicons name="checkmark" size={rs(20)} color={colors.primary} /> : null}
               </Pressable>
             ))}
           </ScrollView>

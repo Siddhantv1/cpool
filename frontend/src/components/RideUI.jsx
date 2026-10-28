@@ -15,10 +15,10 @@ export function Avatar({ initials, color, size = 40 }) {
 }
 
 export function Plate({ text }) {
-  const { colors } = useTheme();
+  const { colors, rs, rf } = useTheme();
   return (
-    <View style={{ backgroundColor: colors.onImage, borderWidth: 2, borderColor: colors.onImageInk, borderRadius: 7, paddingHorizontal: 7, paddingVertical: 3 }}>
-      <Text style={{ color: colors.onImageInk, fontWeight: "800", fontSize: 12, letterSpacing: 0.8 }}>{text}</Text>
+    <View style={{ backgroundColor: colors.onImage, borderWidth: 2, borderColor: colors.onImageInk, borderRadius: rs(7), paddingHorizontal: rs(7), paddingVertical: rs(3) }}>
+      <Text style={{ color: colors.onImageInk, fontWeight: "800", fontSize: rf(12), letterSpacing: 0.8 }}>{text}</Text>
     </View>
   );
 }
@@ -39,36 +39,36 @@ export function confirmSos() {
 }
 
 export function RoundButton({ icon, label, onPress, color, background }) {
-  const { colors, radius } = useTheme();
+  const { colors, radius, rs } = useTheme();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={{ width: 46, height: 46, borderRadius: radius.pill, backgroundColor: background ?? colors.background, alignItems: "center", justifyContent: "center", elevation: 4, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}
+      style={{ width: rs(46), height: rs(46), borderRadius: radius.pill, backgroundColor: background ?? colors.background, alignItems: "center", justifyContent: "center", elevation: 4, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } }}
     >
-      {typeof icon === "string" ? <Ionicons name={icon} size={20} color={color ?? colors.text} /> : icon}
+      {typeof icon === "string" ? <Ionicons name={icon} size={rs(20)} color={color ?? colors.text} /> : icon}
     </Pressable>
   );
 }
 
 export function SosButton() {
-  const { colors } = useTheme();
+  const { colors, rf } = useTheme();
   return (
     <RoundButton
       label="SOS"
       onPress={confirmSos}
       background={colors.danger}
-      icon={<Text style={{ color: colors.onImage, fontWeight: "900", fontSize: 12 }}>SOS</Text>}
+      icon={<Text style={{ color: colors.onImage, fontWeight: "900", fontSize: rf(12) }}>SOS</Text>}
     />
   );
 }
 
 export function EtaCard({ big, unit = "min", title, subtitle, live = true }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rf } = useTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.background, borderRadius: radius.lg + 4, padding: spacing.md, elevation: 6, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 10 }}>
-      <Text style={{ color: colors.text, fontSize: 30, fontWeight: "800" }}>
+      <Text style={{ color: colors.text, fontSize: rf(30), fontWeight: "800" }}>
         {big}
         <Text style={{ fontSize: fontSize.sm, color: colors.textMuted }}> {unit}</Text>
       </Text>
@@ -76,18 +76,18 @@ export function EtaCard({ big, unit = "min", title, subtitle, live = true }) {
         <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700" }} numberOfLines={1}>{title}</Text>
         <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>{subtitle}</Text>
       </View>
-      {live ? <Text style={{ color: colors.danger, fontSize: 11, fontWeight: "800", letterSpacing: 1 }}>● LIVE</Text> : null}
+      {live ? <Text style={{ color: colors.danger, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>● LIVE</Text> : null}
     </View>
   );
 }
 
 // Bottom sheet that sits over the map.
 export function MapSheet({ children }) {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, rs } = useTheme();
   const insets = useSafeAreaInsets();
   return (
     <View style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.lg + 10, borderTopRightRadius: radius.lg + 10, padding: spacing.md, paddingBottom: insets.bottom + spacing.md, gap: spacing.md, elevation: 12, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 16 }}>
-      <View style={{ alignSelf: "center", width: 40, height: 4, borderRadius: 4, backgroundColor: colors.line }} />
+      <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: rs(4), backgroundColor: colors.line }} />
       {children}
     </View>
   );
@@ -95,18 +95,18 @@ export function MapSheet({ children }) {
 
 // Pickup → drop timeline. stops = [{ title, subtitle, time, done }]
 export function Stops({ stops }) {
-  const { colors, spacing, fontSize } = useTheme();
+  const { colors, spacing, fontSize, rs } = useTheme();
   return (
     <View style={{ gap: spacing.md }}>
       {stops.map((s, i) => (
         <View key={s.title} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           {s.done ? (
-            <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="checkmark" size={13} color={colors.onGreen} />
+            <View style={{ width: rs(20), height: rs(20), borderRadius: rs(10), backgroundColor: colors.green, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="checkmark" size={rs(13)} color={colors.onGreen} />
             </View>
           ) : (
-            <View style={{ width: 20, alignItems: "center" }}>
-              <View style={{ width: 12, height: 12, borderRadius: i === stops.length - 1 ? 3 : 6, borderWidth: 2.5, borderColor: colors.text, backgroundColor: i === stops.length - 1 ? colors.text : "transparent" }} />
+            <View style={{ width: rs(20), alignItems: "center" }}>
+              <View style={{ width: rs(12), height: rs(12), borderRadius: i === stops.length - 1 ? 3 : 6, borderWidth: 2.5, borderColor: colors.text, backgroundColor: i === stops.length - 1 ? colors.text : "transparent" }} />
             </View>
           )}
           <View style={{ flex: 1 }}>
@@ -122,7 +122,7 @@ export function Stops({ stops }) {
 
 // Two buttons side by side: a light one and a strong one.
 export function ActionRow({ left, right }) {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs } = useTheme();
   const btn = (b, strong) => (
     <Pressable
       key={b.title}
@@ -140,7 +140,7 @@ export function ActionRow({ left, right }) {
         opacity: pressed ? 0.8 : 1,
       })}
     >
-      {b.icon ? <Ionicons name={b.icon} size={17} color={strong ? (b.green ? colors.onGreen : colors.onInk) : colors.text} /> : null}
+      {b.icon ? <Ionicons name={b.icon} size={rs(17)} color={strong ? (b.green ? colors.onGreen : colors.onInk) : colors.text} /> : null}
       <Text style={{ color: strong ? (b.green ? colors.onGreen : colors.onInk) : colors.text, fontWeight: "800", fontSize: fontSize.md }}>{b.title}</Text>
     </Pressable>
   );

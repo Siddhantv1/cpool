@@ -10,7 +10,7 @@ import { useTheme } from "../../constants/theme";
 import { getDraft, updateDraft } from "../../lib/onboarding";
 
 export default function Helmet() {
-  const { colors, spacing, fontSize, radius } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const [helmet, setHelmet] = useState(getDraft().helmet ?? "host");
 
   function onContinue() {
@@ -24,22 +24,22 @@ export default function Helmet() {
         colors={[colors.primarySurface, colors.background]}
         style={{ borderRadius: radius.lg + 8, alignItems: "center", justifyContent: "center", paddingVertical: spacing.lg }}
       >
-        <MaterialCommunityIcons name="racing-helmet" size={96} color={colors.primary} />
+        <MaterialCommunityIcons name="racing-helmet" size={rs(96)} color={colors.primary} />
       </LinearGradient>
       <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xl, fontWeight: "900" }}>
         Helmet for your pillion?
       </Text>
-      <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: 22 }}>Guests see this before they request your ride.</Text>
+      <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>Guests see this before they request your ride.</Text>
       <View style={{ gap: spacing.sm }} accessibilityRole="radiogroup">
         <OptionCard
-          icon={<MaterialCommunityIcons name="racing-helmet" size={22} color={colors.primary} />}
+          icon={<MaterialCommunityIcons name="racing-helmet" size={rs(22)} color={colors.primary} />}
           title="I'll carry a spare helmet"
           description="Your guest doesn't need to bring one"
           selected={helmet === "host"}
           onPress={() => setHelmet("host")}
         />
         <OptionCard
-          icon={<Ionicons name="person-outline" size={22} color={colors.textMuted} />}
+          icon={<Ionicons name="person-outline" size={rs(22)} color={colors.textMuted} />}
           title="Guest brings their own"
           description="We'll remind them before the ride"
           selected={helmet === "guest"}
@@ -47,7 +47,7 @@ export default function Helmet() {
         />
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.warningSurface, borderRadius: radius.md + 2, padding: spacing.sm + 4 }}>
-        <Ionicons name="shield-checkmark-outline" size={18} color={colors.warning} />
+        <Ionicons name="shield-checkmark-outline" size={rs(18)} color={colors.warning} />
         <Text style={{ color: colors.warning, fontSize: fontSize.sm, flex: 1 }}>Helmets are mandatory for pillion riders in India.</Text>
       </View>
     </Screen>
