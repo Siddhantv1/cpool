@@ -26,54 +26,57 @@ function nextTurn(steps, travelledKm) {
   return { text: next.text, icon: next.icon, inKm: Math.max(0, current.endKm - travelledKm) };
 }
 
-// You're the host: drive to the pickup, then to the office, with real turn-by-turn steps.
+// You're the host: pick up each guest in turn, then drive to the office, with real turn-by-turn steps.
 export default function Drive() {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
-  const { passenger, published } = useTrips();
-  const [leg, setLeg] = useState(0); // 0 = to the pickup, 1 = to the office
+  const { passengers, published } = useTrips();
+  const n = passengers.length;
+  const [leg, setLeg] = useState(0); // 0…n-1 = to guest number leg, n = to the office
   const [arrived, setArrived] = useState(false);
+  const [leaving, setLeaving] = useState(false); // ride completed: going Home
   const from = published?.from ?? HOME;
   const to = published?.to ?? OFFICES[0];
-  const route = useRoute(passenger ? [from.coords, passenger.coords, to.coords] : null);
+  // shortcut: guests are picked up in the order you accepted them; the backend should order pickups along the route.
+  const route = useRoute(n ? [from.coords, ...passengers.map((p) => p.coords), to.coords] : null);
   const current = route?.legs[leg];
+  const passenger = leg < n ? passengers[leg] : null; // the guest you're driving to now
   // shortcut: your position is simulated along the real route; use the phone's GPS (expo-location watchPosition) for real driving.
-  const move = useMovement(current?.coords ?? null, leg === 0 ? 20000 : 22000, { onArrive: () => setArrived(true) });
+  const move = useMovement(current?.coords ?? null, passenger ? 20000 : 22000, { onArrive: () => setArrived(true) });
   // The guest walking to their pickup, shown while you drive there.
   // shortcut: simulated along a real walking route; the backend will send the guest's live GPS (GET /v1/rides/{id}/live).
-  const guestWalk = useRoute(passenger && leg === 0 ? [passenger.from, passenger.coords] : null, "walking");
+  const guestWalk = useRoute(passenger?.from ? [passenger.from, passenger.coords] : null, "walking");
   const guest = useMovement(guestWalk?.coords ?? null, 15000);
   const guestLeftM = guestWalk ? Math.round(guestWalk.km * 1000 * (1 - guest.t)) : null;
   const guestWaiting = guestLeftM != null && guestLeftM <= 50;
-  if (!passenger) return <Redirect href="/home" />;
+  // After Complete ride the guest list empties; render nothing instead of redirecting too (two navigations = white screen).
+  if (!n) return leaving ? null : <Redirect href="/home" />;
 
   const travelled = current ? current.km * move.t : 0;
   const turn = current ? nextTurn(current.steps, travelled) : null;
   const minsLeft = current ? Math.max(1, Math.round(current.minutes * (1 - move.t))) : null;
-  const target = leg === 0 ? passenger.coords : to.coords;
-  const done = current ? (leg === 1 ? [...route.legs[0].coords, ...move.done] : move.done) : null;
-  const pins =
-    leg === 0
-      ? [
-          { id: "pickup", kind: "pickup", coords: passenger.coords },
-          { id: "office", kind: "office", coords: to.coords },
-          ...(guestWalk && guest.point ? [{ id: "guest", kind: "guest", coords: guest.point }] : []),
-        ]
-      : [{ id: "office", kind: "office", coords: to.coords }];
+  const target = passenger ? passenger.coords : to.coords;
+  const done = current ? [...route.legs.slice(0, leg).flatMap((l) => l.coords), ...move.done] : null;
+  const pins = [
+    ...passengers.slice(leg).map((p) => ({ id: p.id, kind: "pickup", coords: p.coords })),
+    { id: "office", kind: "office", coords: to.coords },
+    ...(passenger && guestWalk && guest.point ? [{ id: "guest", kind: "guest", coords: guest.point }] : []),
+  ];
 
   function nextLeg() {
     setArrived(false);
-    setLeg(1);
+    setLeg(leg + 1);
   }
   function complete() {
-    finishHosting();
+    setLeaving(true);
     router.replace("/home");
+    finishHosting();
   }
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
-        <LiveMap route={route?.coords} walks={leg === 0 && guestWalk ? [guestWalk.coords] : []} done={done} pins={pins} vehicle={current ? { point: move.point, heading: move.heading, self: true } : null} />
+        <LiveMap route={route?.coords} walks={passenger && guestWalk ? [guestWalk.coords] : []} done={done} pins={pins} vehicle={current ? { point: move.point, heading: move.heading, self: true } : null} />
       </View>
 
       <View style={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.md }} accessibilityLiveRegion="polite">
@@ -87,7 +90,7 @@ export default function Drive() {
           </View>
         </View>
         <View style={{ backgroundColor: colors.green, opacity: 0.85, borderBottomLeftRadius: radius.md + 2, borderBottomRightRadius: radius.md + 2, marginTop: 2, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.onGreen, fontSize: rf(12), fontWeight: "600" }}>{leg === 0 ? `Then pick up ${passenger.name.split(" ")[0]}` : `Then drop at ${to.name}`}</Text>
+          <Text style={{ color: colors.onGreen, fontSize: rf(12), fontWeight: "600" }}>{passenger ? `Then pick up ${passenger.name.split(" ")[0]}` : `Then drop at ${to.name}`}</Text>
           <Text style={{ color: colors.onGreen, fontSize: rf(12), fontWeight: "600" }}>{minsLeft ? `${minsLeft} min · ${(current.km - travelled).toFixed(1)} km` : ""}</Text>
         </View>
       </View>
@@ -100,11 +103,13 @@ export default function Drive() {
 
       <View style={{ flex: 1 }} />
       <MapSheet>
-        {leg === 0 ? (
+        {passenger ? (
           <>
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>Next pickup</Text>
-              <Text style={{ color: colors.textMuted, fontSize: rf(12), fontWeight: "600" }}>1 of 1</Text>
+              <Text style={{ color: colors.textMuted, fontSize: rf(12), fontWeight: "600" }}>
+                {leg + 1} of {n}
+              </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
               <Avatar initials={passenger.initials} color="#7C3AED" />

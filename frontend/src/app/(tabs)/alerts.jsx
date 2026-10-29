@@ -112,7 +112,7 @@ export default function Alerts() {
   const current = (a) => a.kind === "accepted" && booking?.status === "accepted" && now - a.at < DAY;
 
   function accept(a) {
-    answerRequest(a.reqId, true);
+    if (!answerRequest(a.reqId, true)) return Alert.alert("Your ride is full", "Every seat is taken. Decline this request or cancel a guest first.");
     markRead(a.id);
     playAlert("accepted");
   }

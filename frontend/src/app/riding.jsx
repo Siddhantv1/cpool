@@ -33,9 +33,11 @@ export default function Riding() {
     { id: "office", kind: "office", coords: drop.coords },
   ];
 
+  // Close every ride screen first, then clear the booking, so screens still in the back-stack don't redirect at the same time.
   function done() {
+    if (router.canDismiss()) router.dismissAll();
+    else router.replace("/home");
     clearBooking();
-    router.replace("/home");
   }
 
   return (

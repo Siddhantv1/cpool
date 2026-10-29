@@ -156,5 +156,6 @@ export async function retrievePlace(place, session) {
 export async function searchRides(officeId) {
   await wait();
   // shortcut: no example rides go to Whitefield, so the "no rides yet" screen can be seen; the backend returns real matches.
-  return officeId === "whitefield" ? [] : HOSTS;
+  // Full rides are never offered to guests (the backend must filter them too).
+  return (officeId === "whitefield" ? [] : HOSTS).filter((h) => h.seatsFree > 0);
 }
