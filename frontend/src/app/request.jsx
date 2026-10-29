@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { Redirect, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -17,29 +17,52 @@ export default function Request() {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams();
-  const { requests, published } = useTrips();
+  const { requests, published, passengers } = useTrips();
   const [index, setIndex] = useState(Math.max(0, requests.findIndex((r) => r.id === id)));
-  const req = requests[index];
+  const [leaving, setLeaving] = useState(false);
+  // Keep the index valid when a request is answered and the list gets shorter.
+  const idx = Math.min(index, requests.length - 1);
+  const req = requests[idx];
+  const seats = published?.seats ?? 1;
+  const left = seats - passengers.length;
   const from = published?.from ?? HOME;
   const to = published?.to ?? OFFICES[0];
   // Your route with this colleague's pickup on the way, and without it, to work out the real detour.
   const withGuest = useRoute(req ? [from.coords, req.coords, to.coords] : null);
   const direct = useRoute([from.coords, to.coords]);
-  if (!req) return <Redirect href="/home" />;
+  // Their walk from where they are to the pickup (dotted on the map).
+  const walk = useRoute(req?.from ? [req.from, req.coords] : null, "walking");
+  // Answering the last request empties the list while we go back; render nothing then instead of redirecting too.
+  if (!req) return leaving ? null : <Redirect href="/home" />;
 
   const together = withGuest ? `${withGuest.legs[1].km.toFixed(1)} km` : req.together;
   const extra = withGuest && direct ? Math.max(0, Math.round(withGuest.minutes - direct.minutes)) : null;
   const detour = extra === null ? req.detour : extra === 0 ? "No detour" : `+${extra} min`;
+  // Every guest who asked is on the map; the one shown in the card pops (bigger badge with a pointer). Tap a badge to switch.
   const pins = [
     { id: "start", kind: "start", coords: from.coords },
-    { id: "pickup", kind: "pickup", coords: req.coords },
     { id: "office", kind: "office", coords: to.coords },
+    ...requests.map((r, i) => ({
+      id: r.id,
+      kind: "person",
+      label: r.initials,
+      focused: i === idx,
+      coords: r.coords,
+      onPress: () => setIndex(i),
+      a11y: `Show ${r.name}’s request`,
+    })),
   ];
+  // Frame you, the office and every guest once, so switching guests doesn't move the map.
+  const fit = [from.coords, to.coords, ...requests.flatMap((r) => (r.from ? [r.coords, r.from] : [r.coords]))];
 
+  // After answering, show the next request if there's one you can still act on; otherwise go back.
   function answer(accept) {
-    answerRequest(req.id, accept);
+    if (!answerRequest(req.id, accept)) return Alert.alert("Your ride is full", "Every seat is taken. Decline this request or cancel a guest first.");
     if (accept) playAlert("accepted");
-    router.back();
+    const others = requests.length - 1;
+    if (others > 0 && (!accept || left - 1 > 0)) return setIndex(Math.min(idx, others - 1));
+    setLeaving(true);
+    goBack();
   }
   const decline = () =>
     Alert.alert(`Decline ${req.name.split(" ")[0]}’s request?`, "They’ll be told you can’t take them and can request another ride.", [
@@ -57,7 +80,8 @@ export default function Request() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1 }}>
-        <LiveMap key={req.id} route={withGuest?.coords} pins={pins} padding={{ top: rs(90), bottom: rs(60), left: rs(50), right: rs(50) }} />
+        {/* Same map for every guest: only the line, badges and walk update, so it never reloads. */}
+        <LiveMap route={withGuest?.coords ?? direct?.coords} walks={walk ? [walk.coords] : []} pins={pins} fit={fit} padding={{ top: rs(90), bottom: rs(60), left: rs(50), right: rs(50) }} />
         <View style={{ position: "absolute", top: insets.top + spacing.sm, left: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
           <Pressable onPress={goBack} accessibilityRole="button" accessibilityLabel="Close" style={{ width: rs(38), height: rs(38), borderRadius: rs(19), backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
             <Ionicons name="close" size={rs(20)} color={colors.text} />
@@ -77,11 +101,11 @@ export default function Request() {
             <View style={{ flex: 1 }} />
             {requests.length > 1 ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-                <Pressable onPress={() => setIndex((index - 1 + requests.length) % requests.length)} accessibilityRole="button" accessibilityLabel="Previous request" style={{ width: rs(28), height: rs(28), borderRadius: rs(14), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+                <Pressable onPress={() => setIndex((idx - 1 + requests.length) % requests.length)} accessibilityRole="button" accessibilityLabel="Previous request" style={{ width: rs(28), height: rs(28), borderRadius: rs(14), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
                   <Ionicons name="chevron-back" size={rs(15)} color={colors.text} />
                 </Pressable>
-                <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: rf(12) }}>{index + 1} of {requests.length}</Text>
-                <Pressable onPress={() => setIndex((index + 1) % requests.length)} accessibilityRole="button" accessibilityLabel="Next request" style={{ width: rs(28), height: rs(28), borderRadius: rs(14), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+                <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: rf(12) }}>{idx + 1} of {requests.length}</Text>
+                <Pressable onPress={() => setIndex((idx + 1) % requests.length)} accessibilityRole="button" accessibilityLabel="Next request" style={{ width: rs(28), height: rs(28), borderRadius: rs(14), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
                   <Ionicons name="chevron-forward" size={rs(15)} color={colors.text} />
                 </Pressable>
               </View>
@@ -109,9 +133,9 @@ export default function Request() {
             ]}
           />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-            {[chip("car", `${together} together`), chip("clock-outline", extra === 0 ? detour : `${detour} for you`), chip("seat-passenger", `${req.seats} seat`)]}
+            {[chip("car", `${together} together`), chip("clock-outline", extra === 0 ? detour : `${detour} for you`), chip("seat-passenger", left > 0 ? `${left} of ${seats} seats left` : "Ride full")]}
           </View>
-          <ActionRow left={{ title: "Decline", onPress: decline }} right={{ title: "Accept", green: true, wide: true, onPress: () => answer(true) }} />
+          <ActionRow left={{ title: "Decline", onPress: decline }} right={left > 0 ? { title: "Accept", green: true, wide: true, onPress: () => answer(true) } : { title: "Ride full", wide: true, onPress: () => answer(true) }} />
         </MapSheet>
       </View>
     </View>

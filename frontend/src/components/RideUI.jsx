@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Alert, Linking, Pressable, Share, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../constants/theme";
+import { useMapControl } from "../lib/mapControl";
 
 // Pieces shared by the ride screens: avatar, number plate, SOS, ETA card, bottom sheet, stops.
 
@@ -85,8 +86,15 @@ export function EtaCard({ big, unit = "min", title, subtitle, live = true }) {
 export function MapSheet({ children }) {
   const { colors, spacing, radius, rs } = useTheme();
   const insets = useSafeAreaInsets();
+  const map = useMapControl();
   return (
     <View style={{ backgroundColor: colors.background, borderTopLeftRadius: radius.lg + 10, borderTopRightRadius: radius.lg + 10, padding: spacing.md, paddingBottom: insets.bottom + spacing.md, gap: spacing.md, elevation: 12, shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 16 }}>
+      {/* Recenter button rides on top of the card, so it's always just above it whatever the card's height. */}
+      {map ? (
+        <View style={{ position: "absolute", right: rs(16), top: -rs(58), elevation: 13 }}>
+          <RoundButton icon={map.onMe ? "map-outline" : "locate"} label={map.onMe ? "Show the whole trip" : "Show my location"} color={colors.primary} onPress={map.recenter} />
+        </View>
+      ) : null}
       <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: rs(4), backgroundColor: colors.line }} />
       {children}
     </View>
