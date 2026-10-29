@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { Avatar, call } from "../components/RideUI";
+import { Avatar } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
 import { goBack } from "../lib/nav";
 import { searchRides } from "../lib/api";
@@ -113,14 +113,6 @@ function HostCard({ host, requested, onRequest, officeId }) {
           <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.lg }}>{host.time}</Text>
           <Text style={{ color: colors.textMuted, fontSize: rf(11) }}>leaves</Text>
         </View>
-        <Pressable
-          onPress={() => call(host.phone)}
-          accessibilityRole="button"
-          accessibilityLabel={`Call ${host.name}`}
-          style={{ width: rs(38), height: rs(38), borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}
-        >
-          <Ionicons name="call-outline" size={rs(17)} color={colors.text} />
-        </Pressable>
       </View>
 
       <Pressable

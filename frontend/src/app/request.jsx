@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
-import { ActionRow, Avatar, call, MapSheet, Stops } from "../components/RideUI";
+import { ActionRow, Avatar, MapSheet, Stops } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
 import { goBack } from "../lib/nav";
 import { playAlert } from "../lib/alerts";
@@ -97,7 +97,6 @@ export default function Request() {
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
             <View style={{ width: rs(8), height: rs(8), borderRadius: rs(4), backgroundColor: colors.green }} />
             <Text style={{ color: colors.text, fontWeight: "700", fontSize: rf(12) }}>New request</Text>
-            <Text style={{ color: colors.textMuted, fontSize: rf(12) }}>· {req.expiresIn} left</Text>
             <View style={{ flex: 1 }} />
             {requests.length > 1 ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
@@ -121,9 +120,6 @@ export default function Request() {
               </View>
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{req.rides} rides completed</Text>
             </View>
-            <Pressable onPress={() => call(req.phone)} accessibilityRole="button" accessibilityLabel={`Call ${req.name}`} style={{ width: rs(44), height: rs(44), borderRadius: rs(22), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="call-outline" size={rs(19)} color={colors.text} />
-            </Pressable>
           </View>
 
           <Stops
