@@ -85,7 +85,7 @@ All routes except auth need `Authorization: Bearer <token>`. Errors are HTTP 4xx
 | POST | `/v1/auth/forgot` | `{email}` → sends code (same answer whether or not the account exists) |
 | POST | `/v1/auth/verify` | `{email, code, purpose: "signup" \| "reset"}` → `{token}` (valid 15 min). Errors: `wrong_code`, `code_expired` (10 min), `too_many_tries` (5) |
 | POST | `/v1/auth/set-password` | `{token, password, phone}` → `{ok}`. A sign-up token creates the account and **needs `phone`** (Indian mobile, 10 digits starting 6–9; `+91` optional; stored as `+91XXXXXXXXXX`). A reset token resets the password (`phone` ignored) and signs out every phone. Errors: `token_expired`, `phone_required`, `invalid_phone`, `weak_password`, `already_registered` |
-| POST | `/v1/auth/login` | `{email, password}` → `{token, role, vehicle}`. Errors: `not_registered` (no account for this email), `wrong_password`, `account_disabled` |
+| POST | `/v1/auth/login` | `{email, password}` → `{token, role, vehicle, phone}`. Errors: `not_registered` (no account for this email), `wrong_password`, `account_disabled` |
 | POST | `/v1/auth/logout` | → `{ok}` (the token stops working) |
 | GET / PUT / PATCH | `/v1/me` | `{email, name, gender, phone, role, vehicle}`; PUT and PATCH change only the fields sent (`name`, `gender`, `phone`, `role`). `phone`: same Indian mobile check as sign-up (can be changed, not removed) |
 | GET | `/v1/me/trip` | what Home shows (poll it): `{ride, booking}`. `ride` = the ride you host (with its `bookings`, oldest first; each has `alongKm`, how far along your route that guest is, so sort by it to drive pickups in order), `booking` = your latest seat request (kept 24 h after it ends, so you see "declined") |

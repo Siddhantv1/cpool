@@ -37,7 +37,7 @@ class AuthFlowTests(APITestCase):
     def test_signup_to_host_setup(self):
         self.register(email="  Asha.K@Perficient.com ")  # trimmed and lower-cased
         first = self.sign_in()
-        self.assertEqual((first["role"], first["vehicle"]), (None, None))  # first sign-in → first-time setup
+        self.assertEqual((first["role"], first["vehicle"], first["phone"]), (None, None, "+919845012345"))  # first sign-in → first-time setup
 
         self.client.put("/v1/me", {"role": "host"}, format="json")
         vehicle = self.post("/v1/me/vehicles", BIKE, 201)

@@ -184,7 +184,7 @@ def set_password(request):
 
 
 @auth_view({"email": serializers.EmailField(), "password": serializers.CharField()},
-           body("LoginResult", {"token": serializers.CharField(), "role": serializers.CharField(allow_null=True), "vehicle": serializers.DictField(allow_null=True)}))
+           body("LoginResult", {"token": serializers.CharField(), "role": serializers.CharField(allow_null=True), "vehicle": serializers.DictField(allow_null=True), "phone": serializers.CharField(allow_null=True)}))
 def login(request):
     email = work_email(request.data.get("email"))
     user = User.objects.filter(username=email).first()
@@ -197,7 +197,7 @@ def login(request):
     # ponytail: one token per user, shared by all their phones; logging out on one logs out all. Use django-rest-knox if that bites.
     token, _ = Token.objects.get_or_create(user=user)
     vehicle = user.vehicle()
-    return Response({"token": token.key, "role": user.role, "vehicle": VehicleSerializer(vehicle).data if vehicle else None})
+    return Response({"token": token.key, "role": user.role, "vehicle": VehicleSerializer(vehicle).data if vehicle else None, "phone": user.phone or None})
 
 
 @extend_schema(request=None, responses=OK)
