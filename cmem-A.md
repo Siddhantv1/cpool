@@ -4,7 +4,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 
 ## Current state
 
-### Frontend (Claude-A), updated 2026-10-30
+### Frontend (Claude-A), updated 2026-10-30 (clock time picker)
 
 - **Stack:** Expo SDK 58, React Native 0.88, JavaScript, Expo Router (`frontend/src/app`), Mapbox (`@rnmapbox/maps`). Android dev build tested on real phones; iOS not tested.
 - **All data is example data in the app** (`frontend/src/lib/mock.js`, state in `frontend/src/lib/trips.js`). `frontend/src/lib/api.js` has fake auth functions; each has a comment showing the real route it should call.
@@ -29,6 +29,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 - **Map recenter button** on every map screen (first tap = my location, second = whole trip), attached above the bottom card via `frontend/src/lib/mapControl.js`.
 - **Host's seat-request screen shows every pending guest on one map** (initials badges; the one in focus is bigger with a pointer; tap or ‹ › to switch; the map doesn't reload).
 - **Simulated until the backend exists:** host accepting (8 s timer), host live position, guest walking dot, sign-in codes.
+- **Time picker (`frontend/src/components/WhenSheet.jsx`):** day chips (today + 6 days), then a clock dial: tap the hour, then the minute (5-minute steps), AM/PM toggle. At least 10 minutes from now. Used for “Find a ride” scheduling and “Offer a ride”. Sends a plain `Date`; no API change.
 - **Responsive:** sizes scale with screen width via `rs()` / `rf()` from `useTheme()` (`frontend/src/constants/theme.js`).
 
 ---
