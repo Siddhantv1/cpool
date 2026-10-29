@@ -72,7 +72,8 @@ RideIn = type("RideIn", (serializers.Serializer,), {
 
 
 BookingIn = type("BookingIn", (serializers.Serializer,), {"meetPoint": Coords(), "meetName": serializers.CharField(max_length=120)})
-LocationIn = type("LocationIn", (serializers.Serializer,), {"coords": Coords(), "heading": serializers.FloatField(required=False, allow_null=True)})
+LocationIn = type("LocationIn", (serializers.Serializer,), {"coords": Coords(), "heading": serializers.FloatField(required=False, allow_null=True),
+                                                          "atMeetPoint": serializers.BooleanField(required=False, default=False)})
 SosIn = type("SosIn", (serializers.Serializer,), {"coords": Coords(required=False)})
 AlertsReadIn = type("AlertsReadIn", (serializers.Serializer,), {"ids": serializers.ListField(child=serializers.IntegerField(), required=False)})
 
@@ -175,6 +176,7 @@ def host_view(ride):
             "status": b.status,
             "meetPoint": b.meet,
             "meetName": b.meet_name,
+            "alongKm": round(geo.nearest(ride.route, b.meet)[2], 2),  # how far along your route this guest is: sort by it to drive pickups in order
             "createdAt": b.created,
             "guest": {**person(b.guest, phone=b.status in SEES_PHONE), "rides": b.guest.bookings.filter(status="picked_up").count()},
         } for b in bookings],
@@ -434,7 +436,8 @@ def send_location(request, ride_id):
     if ride.status not in ACTIVE_RIDE:
         raise ApiError("not_allowed_now", "This ride has ended.", 409)
     data = valid(LocationIn, request.data)
-    Location.objects.update_or_create(ride=ride, user=request.user, defaults={"coords": data["coords"], "heading": data.get("heading")})
+    Location.objects.update_or_create(ride=ride, user=request.user,
+                                      defaults={"coords": data["coords"], "heading": data.get("heading"), "at_meet_point": data["atMeetPoint"]})
     return ok()
 
 
@@ -446,7 +449,7 @@ def live(request, ride_id):
     locations = {loc.user_id: loc for loc in ride.locations.all()}
     guests = []
     if ride.host_id == request.user.id:
-        guests = [{"bookingId": b.id, "name": display_name(b.guest), **position(locations[b.guest_id])}
+        guests = [{"bookingId": b.id, "name": display_name(b.guest), **position(locations[b.guest_id]), "atMeetPoint": locations[b.guest_id].at_meet_point}
                   for b in ride.bookings.filter(status__in=SEES_PHONE).select_related("guest") if b.guest_id in locations]
     return Response({"host": position(locations.get(ride.host_id)), "guests": guests})
 

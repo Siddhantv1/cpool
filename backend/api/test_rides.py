@@ -283,3 +283,18 @@ class RideTests(APITestCase):
         self.assertEqual(res.data["code"], "not_registered")
         self.assertEqual(self.client.post("/v1/auth/signup", {"email": "guest.one@perficient.com"}, format="json").status_code, 200)  # can join again
         self.assertEqual(self.alerts(self.host)[0]["who"]["name"], "Deleted user")  # the host's history no longer names them
+
+    def test_meet_point_flag_and_pickup_order(self):
+        ride = self.offer()
+        late = self.call(self.guest, "post", f"/v1/rides/{ride['id']}/bookings", {"meetPoint": [77.66, 12.9302], "meetName": "Ejipura"}, 201)
+        early = self.call(self.guest2, "post", f"/v1/rides/{ride['id']}/bookings", {"meetPoint": [77.63, 12.93], "meetName": "Koramangala 6th Block"}, 201)
+        for b in (late, early):
+            self.call(self.host, "post", f"/v1/bookings/{b['id']}/accept")
+        bookings = self.call(self.host, "get", "/v1/me/trip")["ride"]["bookings"]
+        by_route = [b["meetName"] for b in sorted(bookings, key=lambda b: b["alongKm"])]
+        self.assertEqual(by_route, ["Koramangala 6th Block", "Ejipura"])  # driving order, not accept order
+
+        self.call(self.guest2, "post", f"/v1/rides/{ride['id']}/locations", {"coords": [77.6301, 12.9301], "atMeetPoint": True})
+        self.call(self.guest, "post", f"/v1/rides/{ride['id']}/locations", {"coords": [77.65, 12.935]})
+        waiting = {g["name"]: g["atMeetPoint"] for g in self.call(self.host, "get", f"/v1/rides/{ride['id']}/live")["guests"]}
+        self.assertEqual(waiting, {"Guest Two": True, "Guest One": False})

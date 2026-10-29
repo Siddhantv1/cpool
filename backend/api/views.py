@@ -29,6 +29,7 @@ CODE_MINUTES = 10
 CODE_TRIES = 5
 SET_PASSWORD_SECONDS = 15 * 60
 WORK_EMAIL = re.compile(r"^[^\s@]+@perficient\.com$", re.I)
+MOBILE = re.compile(r"^(?:\+?91|0)?([6-9]\d{9})$")  # Indian mobile: 10 digits starting 6-9
 PLATE = re.compile(r"^([A-Z]{2}\d{1,2}[A-Z]{0,3}\d{4}|\d{2}BH\d{4}[A-Z]{1,2})$")  # KL34B3211, 22BH1234AA
 
 
@@ -64,6 +65,12 @@ def work_email(value):
     if not WORK_EMAIL.match(email):
         raise ApiError("not_work_email", "Use your Perficient email.")
     return email
+
+
+def indian_mobile(value):
+    """'+91 98450-12345', '09845012345', '9845012345' -> '+919845012345'; None if it isn't an Indian mobile number."""
+    match = MOBILE.match(re.sub(r"[\s-]", "", str(value or "")))
+    return f"+91{match.group(1)}" if match else None
 
 
 def check_password_rules(password, user=None):
@@ -144,7 +151,8 @@ def verify(request):
     return Response({"token": signing.dumps({"email": email, "purpose": purpose}, salt="set-password")})
 
 
-@auth_view({"token": serializers.CharField(), "password": serializers.CharField()})
+@auth_view({"token": serializers.CharField(), "password": serializers.CharField(),
+            "phone": serializers.CharField(required=False, help_text="Required when creating an account (sign-up token)")})
 def set_password(request):
     try:
         data = signing.loads(request.data.get("token", ""), salt="set-password", max_age=SET_PASSWORD_SECONDS)
@@ -155,8 +163,15 @@ def set_password(request):
     if data["purpose"] == "signup":
         if User.objects.filter(username=email).exists():
             raise ApiError("already_registered", "An account with this email already exists. Sign in instead.")
+        # Every account has a mobile number, so "Call" works once a seat is confirmed. No SMS check in v1:
+        # the work-email code already proves who the person is.
+        if not str(request.data.get("phone") or "").strip():
+            raise ApiError("phone_required", "Add your mobile number.")
+        phone = indian_mobile(request.data.get("phone"))
+        if not phone:
+            raise ApiError("invalid_phone", "Enter a 10-digit Indian mobile number.")
         check_password_rules(password, User(username=email, email=email))
-        User.objects.create_user(username=email, email=email, password=password)
+        User.objects.create_user(username=email, email=email, password=password, phone=phone)
     else:
         user = User.objects.filter(username=email).first()
         if not user:
@@ -239,13 +254,19 @@ class VehicleSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     name = serializers.CharField(min_length=2, max_length=40, required=False)
-    phone = serializers.RegexField(r"^\+?\d{10,15}$", required=False, allow_blank=True, error_messages={"invalid": "Enter a phone number like +919876543210."})
+    phone = serializers.CharField(required=False, max_length=20)
     vehicle = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ["email", "name", "gender", "phone", "role", "vehicle"]
         read_only_fields = ["email"]
+
+    def validate_phone(self, value):
+        phone = indian_mobile(value)
+        if not phone:
+            raise serializers.ValidationError("Enter a 10-digit Indian mobile number.")
+        return phone
 
     def get_vehicle(self, user) -> dict | None:
         vehicle = user.vehicle()

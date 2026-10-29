@@ -126,6 +126,7 @@ class Location(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     coords = models.JSONField()
     heading = models.FloatField(null=True, blank=True)
+    at_meet_point = models.BooleanField(default=False)  # the guest's phone says it's within 50 m of the meet point
     at = models.DateTimeField(auto_now=True)
 
     class Meta:

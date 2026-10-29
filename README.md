@@ -84,11 +84,11 @@ All routes except auth need `Authorization: Bearer <token>`. Errors are HTTP 4xx
 | POST | `/v1/auth/signup` | `{email}` → sends code (error if the account already exists) |
 | POST | `/v1/auth/forgot` | `{email}` → sends code (same answer whether or not the account exists) |
 | POST | `/v1/auth/verify` | `{email, code, purpose: "signup" \| "reset"}` → `{token}` (valid 15 min). Errors: `wrong_code`, `code_expired` (10 min), `too_many_tries` (5) |
-| POST | `/v1/auth/set-password` | `{token, password}` → `{ok}` (creates the account or resets the password, based on the token; a reset signs out every phone). Errors: `token_expired`, `weak_password`, `already_registered` |
+| POST | `/v1/auth/set-password` | `{token, password, phone}` → `{ok}`. A sign-up token creates the account and **needs `phone`** (Indian mobile, 10 digits starting 6–9; `+91` optional; stored as `+91XXXXXXXXXX`). A reset token resets the password (`phone` ignored) and signs out every phone. Errors: `token_expired`, `phone_required`, `invalid_phone`, `weak_password`, `already_registered` |
 | POST | `/v1/auth/login` | `{email, password}` → `{token, role, vehicle}`. Errors: `not_registered` (no account for this email), `wrong_password`, `account_disabled` |
 | POST | `/v1/auth/logout` | → `{ok}` (the token stops working) |
-| GET / PUT / PATCH | `/v1/me` | `{email, name, gender, phone, role, vehicle}`; PUT and PATCH change only the fields sent (`name`, `gender`, `phone`, `role`). `phone` like `+919876543210` |
-| GET | `/v1/me/trip` | what Home shows (poll it): `{ride, booking}`. `ride` = the ride you host (with its `bookings`), `booking` = your latest seat request (kept 24 h after it ends, so you see "declined") |
+| GET / PUT / PATCH | `/v1/me` | `{email, name, gender, phone, role, vehicle}`; PUT and PATCH change only the fields sent (`name`, `gender`, `phone`, `role`). `phone`: same Indian mobile check as sign-up (can be changed, not removed) |
+| GET | `/v1/me/trip` | what Home shows (poll it): `{ride, booking}`. `ride` = the ride you host (with its `bookings`, oldest first; each has `alongKm`, how far along your route that guest is, so sort by it to drive pickups in order), `booking` = your latest seat request (kept 24 h after it ends, so you see "declined") |
 | GET | `/v1/me/vehicles` | your vehicles; `isDefault` marks the default (the one you picked, else the first added) |
 | PATCH / DELETE | `/v1/me/vehicles/{id}` | edit (same fields as adding; only the ones sent change) · remove (kept for past rides, gone from the app). Error: `vehicle_in_use` while that vehicle is on an open ride |
 | POST | `/v1/me/vehicles/{id}/default` | make it the default → your vehicle list |
@@ -106,7 +106,7 @@ All routes except auth need `Authorization: Bearer <token>`. Errors are HTTP 4xx
 | POST | `/v1/rides/{id}/cancel` · `start` · `complete` | host only. `cancel {reason?}` cancels every booking; `complete` needs `start` first |
 | POST | `/v1/rides/{id}/bookings` | `{meetPoint: [lng,lat], meetName}` → your booking. Errors: `own_ride`, `ride_closed`, `ride_full`, `already_on_trip` (one trip at a time) |
 | POST | `/v1/bookings/{id}/accept` · `reject` · `cancel` · `picked-up` · `no-show` | host: `accept` (takes a seat; `ride_full` if none left), `reject`, `picked-up` / `no-show` (after `start`). Guest: `cancel {reason?}` (withdraws a request or frees a confirmed seat). Status: `requested` → `accepted` / `declined` / `withdrawn` / `cancelled` (by host) → `picked_up` / `no_show` |
-| POST / GET | `/v1/rides/{id}/locations` · `/v1/rides/{id}/live` | host or confirmed guest. Send `{coords, heading?}` every ~5 s. `live` → `{host: {coords, heading, at}, guests: [...]}`: guests see the host only, the host sees their guests |
+| POST / GET | `/v1/rides/{id}/locations` · `/v1/rides/{id}/live` | host or confirmed guest. Send `{coords, heading?, atMeetPoint?}` every ~5 s (`atMeetPoint`: the guest's phone says it's within 50 m of the meet point). `live` → `{host: {coords, heading, at}, guests: [{bookingId, name, coords, heading, at, atMeetPoint}]}`: guests see the host only, the host sees their guests |
 | POST | `/v1/rides/{id}/sos` | `{coords?}` → saved for the security desk (admin panel); also emailed if `SOS_EMAIL` is set |
 
 Place search ("Where to?") calls the Mapbox Search Box API directly from the app with the public token, so the backend doesn't need a search route.

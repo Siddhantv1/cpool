@@ -27,7 +27,7 @@ class AuthFlowTests(APITestCase):
     def register(self, email=EMAIL, password=PASSWORD):
         self.post("/v1/auth/signup", {"email": email})
         token = self.post("/v1/auth/verify", {"email": email, "code": self.last_code(), "purpose": "signup"})["token"]
-        self.post("/v1/auth/set-password", {"token": token, "password": password})
+        self.post("/v1/auth/set-password", {"token": token, "password": password, "phone": "+919845012345"})
 
     def sign_in(self, email=EMAIL, password=PASSWORD):
         data = self.post("/v1/auth/login", {"email": email, "password": password})
@@ -90,8 +90,8 @@ class AuthFlowTests(APITestCase):
     def test_weak_password_and_bad_token(self):
         self.post("/v1/auth/signup", {"email": EMAIL})
         token = self.post("/v1/auth/verify", {"email": EMAIL, "code": self.last_code(), "purpose": "signup"})["token"]
-        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "short1"}, 400)["code"], "weak_password")
-        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "password1"}, 400)["code"], "weak_password")  # too common
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "short1", "phone": "9845012345"}, 400)["code"], "weak_password")
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "password1", "phone": "9845012345"}, 400)["code"], "weak_password")  # too common
         self.assertEqual(self.post("/v1/auth/set-password", {"token": "forged", "password": PASSWORD}, 400)["code"], "token_expired")
 
     def test_change_password_rotates_token(self):
@@ -124,3 +124,17 @@ class AuthFlowTests(APITestCase):
         self.register()
         User.objects.filter(username=EMAIL).update(is_active=False)
         self.assertEqual(self.post("/v1/auth/login", {"email": EMAIL, "password": PASSWORD}, 403)["code"], "account_disabled")
+
+    def test_mobile_number_at_signup(self):
+        self.post("/v1/auth/signup", {"email": EMAIL})
+        token = self.post("/v1/auth/verify", {"email": EMAIL, "code": self.last_code(), "purpose": "signup"})["token"]
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD}, 400)["code"], "phone_required")
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": "12345"}, 400)["code"], "invalid_phone")
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": "5845012345"}, 400)["code"], "invalid_phone")  # must start 6-9
+        self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": " 98450-12345"})
+        self.sign_in()
+        self.assertEqual(self.client.get("/v1/me").data["phone"], "+919845012345")  # stored in one format
+
+        res = self.client.patch("/v1/me", {"phone": "hello"}, format="json")
+        self.assertEqual((res.status_code, list(res.data["fields"])), (400, ["phone"]))
+        self.assertEqual(self.client.patch("/v1/me", {"phone": "+91 70000 00001"}, format="json").data["phone"], "+917000000001")
