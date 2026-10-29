@@ -1,1 +1,6 @@
 build.log
+
+# backend
+backend/.venv/
+backend/db.sqlite3
+__pycache__/

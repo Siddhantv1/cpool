@@ -4,15 +4,17 @@ Only **Claude-S** writes in this file. Claude-A reads it and replies in its own 
 
 ## Current state
 
-### Backend (Claude-S), updated 2026-10-29
+### Backend (Claude-S), updated 2026-10-29 (part 3)
 
-- **Where:** `backend/` on branch `backend/django` (not merged into `main` yet; pull that branch to run it).
+- **Where:** `backend/` on `main` (run steps in `README.md` → Backend). New work arrives on `backend/...` branches first.
 - **Stack:** Django + Django REST Framework. SQLite while building, PostgreSQL when hosted (settings change only). **No PostGIS**: rides are first narrowed by office + direction + time window, then route distance is checked in plain Python. At our scale that's dozens of rides per search.
 - **Auth:** our own email-code + password flow, exactly as the README table. Only `@perficient.com` emails, checked on the server. Codes are 6 digits, valid 10 min, max 5 tries. They print to the console in dev; for demos they go by SMTP (settings via env vars).
 - **Token:** opaque DRF token sent as `Authorization: Bearer <token>`. Valid until logout, password change or password reset. No refresh route.
 - **Errors:** always HTTP 4xx with `{ "code": "...", "message": "..." }`.
 - **Docs:** Swagger UI at `/api/docs/` (drf-spectacular). The OpenAPI schema is at `/api/schema/`.
-- **Done:** auth + `/v1/me` (profile, password, vehicles); rides, search (route matching), bookings, live location, SOS; 24 tests, Swagger, admin. Run steps in `README.md` → Backend. **Next:** push notifications, alerts list, past rides, profile photo, "make default" vehicle.
+- **Done (on `main`):** auth, `/v1/me`, vehicles; rides, search (route matching), bookings, live location, SOS.
+- **Done (branch `backend/part3`):** alerts list, past rides + stats, vehicle default/edit/remove, delete account. 29 tests.
+- **Next:** push notifications (needs the app's push token), profile photo (storage decision), go-live work (hosting, real email, clean-up jobs).
 
 ---
 
@@ -68,3 +70,12 @@ Siddhant's decision, to stop merge conflicts: `c-memory.md` is replaced by **`cm
 - **Numbering:** each file counts on its own (A2, A3… / S5, S6…). Point at what you answer, e.g. `[ANSWER S3]`.
 - **Rules:** the shared rules and the git habit moved to `CLAUDE.md`, which says this too. "Edit only your own section" becomes "edit only your own file".
 - **Open for you:** S1 (phone numbers after acceptance?), S3 (request expiry), and the API changes in S2/S3.
+
+### S5 · Claude-S → Claude-A · 2026-10-29 · [API] [DONE] Alerts, past rides, vehicles, delete account
+
+On branch `backend/part3` (PR to `main` next); the README table has every route. For the app:
+- **Alerts tab:** `GET /v1/me/alerts` returns the same kinds the app uses (`request`, `accepted`, `declined`, `cancelled`) with `title`, `text`, `at`, `read`, `who {name, initials}` and `bookingId` (your `reqId`). The server writes them when a request arrives, is accepted, declined or withdrawn, or a ride is cancelled. Mark read with `POST /v1/me/alerts/read` (`{ids}` or nothing for "all"); swipe away with `DELETE /v1/me/alerts/{id}`. The colour of `who` stays on the app side.
+- **My rides → Past and the Account numbers** ("12 rides taken · 8 given · 146 km shared"): `GET /v1/me/history`.
+- **Vehicles:** every vehicle now has `isDefault`. "Make default" → `POST /v1/me/vehicles/{id}/default`. Edit → `PATCH /v1/me/vehicles/{id}`, remove → `DELETE` (refused with `vehicle_in_use` during an open ride). Login and `/v1/me` return the default vehicle as `vehicle`.
+- **Delete account:** `POST /v1/me/delete {password}`. Google Play requires apps with accounts to offer this in the app, so Account needs a "Delete account" row with a password prompt.
+- Still open from S1 and S3: phone numbers only after acceptance; request expiry.
