@@ -7,6 +7,8 @@ const wait = () => new Promise((resolve) => setTimeout(resolve, 800));
 const normalize = (email) => email.trim().toLowerCase();
 
 export const isWorkEmail = (email) => /^[^\s@]+@perficient\.com$/i.test(email.trim());
+// Indian mobile number typed without +91: 10 digits starting with 6–9.
+export const isMobile = (digits) => /^[6-9]\d{9}$/.test(digits);
 
 // Fake accounts: email -> password. Demo account for testing login without signing up.
 const users = new Map([["demo@perficient.com", "Cpool123"]]);
@@ -41,18 +43,22 @@ export async function verifyCode(email, code, purpose) {
   return { token: `${purpose}:${normalize(email)}` };
 }
 
-// POST /v1/auth/set-password {token, password} -> {ok}
-// The token says whether this is a new account or a reset.
-export async function setPassword(token, password) {
+// POST /v1/auth/set-password {token, password, phone} -> {ok}   (phone only for a new account, e.g. "+919876543210")
+// The token says whether this is a new account or a reset. A new account needs a mobile number.
+export async function setPassword(token, password, phone) {
   await wait();
-  const [, email] = (token || "").split(":");
+  const [purpose, email] = (token || "").split(":");
   if (!email) throw new Error("This link has expired. Please start again.");
   if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+  if (purpose === "signup") {
+    if (!isMobile(phone ?? "")) throw new Error("Enter your 10-digit mobile number.");
+    profiles.set(email, { ...profiles.get(email), phone: `+91${phone}` });
+  }
   users.set(email, password);
   return { ok: true };
 }
 
-// POST /v1/auth/login {email, password} -> {token, role, vehicle}
+// POST /v1/auth/login {email, password} -> {token, role, vehicle, phone}
 // role is null on the first sign-in, which sends the user to first-time setup.
 // Errors carry a code: "not_registered" (no account for this email) or "wrong_password".
 // POST /v1/me/password {current, new} → { ok }. Error if the current password is wrong.
@@ -73,7 +79,7 @@ export async function login(email, password) {
     throw Object.assign(new Error("Email or password is incorrect"), { code: "wrong_password" });
   }
   const profile = profiles.get(normalize(email)) ?? {};
-  return { token: "fake-token", role: profile.role ?? null, vehicle: profile.vehicle ?? null };
+  return { token: "fake-token", role: profile.role ?? null, vehicle: profile.vehicle ?? null, phone: profile.phone ?? null };
 }
 
 // PUT /v1/me {role: "guest" | "host"} -> {ok}
