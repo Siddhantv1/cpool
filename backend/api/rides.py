@@ -9,7 +9,7 @@ from datetime import timedelta
 
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db.models import F, Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -19,7 +19,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from . import geo
-from .models import ACTIVE_BOOKING, ACTIVE_RIDE, OFFICES, Booking, Location, Ride, Sos
+from .models import ACTIVE_BOOKING, ACTIVE_RIDE, OFFICES, Alert, Booking, Location, Ride, Sos
 from .views import ApiError, VehicleSerializer, body, ok
 
 MAX_WALK_KM = 1.5  # rides whose route passes farther than this from you aren't shown
@@ -72,8 +72,10 @@ RideIn = type("RideIn", (serializers.Serializer,), {
 
 
 BookingIn = type("BookingIn", (serializers.Serializer,), {"meetPoint": Coords(), "meetName": serializers.CharField(max_length=120)})
-LocationIn = type("LocationIn", (serializers.Serializer,), {"coords": Coords(), "heading": serializers.FloatField(required=False, allow_null=True)})
+LocationIn = type("LocationIn", (serializers.Serializer,), {"coords": Coords(), "heading": serializers.FloatField(required=False, allow_null=True),
+                                                          "atMeetPoint": serializers.BooleanField(required=False, default=False)})
 SosIn = type("SosIn", (serializers.Serializer,), {"coords": Coords(required=False)})
+AlertsReadIn = type("AlertsReadIn", (serializers.Serializer,), {"ids": serializers.ListField(child=serializers.IntegerField(), required=False)})
 
 
 class SearchIn(serializers.Serializer):
@@ -101,6 +103,22 @@ def display_name(user):
 def person(user, phone=False):
     name = display_name(user)
     return {"name": name, "initials": "".join(w[0] for w in name.split()[:2]).upper(), "phone": (user.phone or None) if phone else None}
+
+
+def first_name(user):
+    return display_name(user).split()[0]
+
+
+def when(dt):
+    """"Thu 29 Oct, 8:30 AM" in India time."""
+    t = timezone.localtime(dt)
+    return f"{t:%a} {t.day} {t:%b}, {t.hour % 12 or 12}:{t:%M} {'AM' if t.hour < 12 else 'PM'}"
+
+
+def notify(user, kind, title, text, who, booking):
+    """Add a line to someone's Alerts tab.
+    ponytail: push notifications get sent from here too, once the app sends its push token (part 3, step 2)."""
+    Alert.objects.create(user=user, kind=kind, title=title, text=text, who=who, ride_id=booking.ride_id, booking=booking)
 
 
 def host_info(ride, phone=False):
@@ -158,6 +176,7 @@ def host_view(ride):
             "status": b.status,
             "meetPoint": b.meet,
             "meetName": b.meet_name,
+            "alongKm": round(geo.nearest(ride.route, b.meet)[2], 2),  # how far along your route this guest is: sort by it to drive pickups in order
             "createdAt": b.created,
             "guest": {**person(b.guest, phone=b.status in SEES_PHONE), "rides": b.guest.bookings.filter(status="picked_up").count()},
         } for b in bookings],
@@ -192,8 +211,7 @@ def offer(request):
     now = timezone.now()
     if not now + MIN_NOTICE <= data["departAt"] <= now + MAX_AHEAD:
         raise ApiError("bad_time", "Pick a time from 10 minutes to 7 days from now.")
-    vehicles = request.user.vehicles
-    vehicle = vehicles.filter(pk=data["vehicleId"]).first() if "vehicleId" in data else vehicles.first()
+    vehicle = request.user.active_vehicles().filter(pk=data["vehicleId"]).first() if "vehicleId" in data else request.user.vehicle()
     if not vehicle:
         raise ApiError("no_vehicle", "Add a vehicle before offering a ride.")
     if data["seats"] > vehicle.seats:
@@ -281,7 +299,10 @@ def cancel_ride(request, ride_id):
     reason = str(request.data.get("reason") or "Plans changed")[:140]
     with transaction.atomic():
         move(Ride.objects.filter(pk=ride.pk), "cancelled", ACTIVE_RIDE, "This ride has already ended.")
-        ride.bookings.filter(status__in=["requested", "accepted"]).update(status="cancelled", reason=reason)
+        told = list(ride.bookings.filter(status__in=["requested", "accepted"]).select_related("guest"))
+        ride.bookings.filter(pk__in=[b.pk for b in told]).update(status="cancelled", reason=reason)
+        for b in told:
+            notify(b.guest, "cancelled", f"{first_name(request.user)} cancelled the ride", f"{when(ride.depart_at)} · {reason}", request.user, b)
     ride.refresh_from_db()
     return Response(host_view(ride))
 
@@ -303,6 +324,7 @@ def request_seat(request, ride_id):
     try:
         with transaction.atomic():
             booking = Booking.objects.create(ride=ride, guest=request.user, meet=data["meetPoint"], meet_name=data["meetName"])
+            notify(ride.host, "request", f"{first_name(request.user)} asked for a seat", f"{when(ride.depart_at)} · pickup at {booking.meet_name}", request.user, booking)
     except IntegrityError:  # a second request raced the first
         raise ApiError("already_on_trip", "You already have a seat requested or booked. Cancel it first.", 409)
     return Response(guest_view(booking), status=201)
@@ -327,6 +349,7 @@ def accept(request, booking_id):
         # The seat is taken only if one is still free; otherwise the accept above is rolled back.
         if Ride.objects.filter(pk=booking.ride_id, seats_left__gt=0).update(seats_left=F("seats_left") - 1) != 1:
             raise ApiError("ride_full", "Your ride is already full.", 409)
+        notify(booking.guest, "accepted", f"{first_name(request.user)} accepted your request", f"{when(booking.ride.depart_at)} · meet at {booking.meet_name}", request.user, booking)
     return Response(fresh_host_view(booking.ride_id))
 
 
@@ -335,6 +358,7 @@ def accept(request, booking_id):
 def reject(request, booking_id):
     booking = hosts_booking(request, booking_id)
     move(Booking.objects.filter(pk=booking.pk), "declined", ["requested"], "This request was withdrawn or already answered.")
+    notify(booking.guest, "declined", f"{first_name(request.user)} couldn’t take you", "Your seat request was declined. Try another ride.", request.user, booking)
     return Response(fresh_host_view(booking.ride_id))
 
 
@@ -351,6 +375,8 @@ def cancel_booking(request, booking_id):
         qs.update(reason=reason)
         if was == "accepted":
             Ride.objects.filter(pk=booking.ride_id).update(seats_left=F("seats_left") + 1)
+        title = f"{first_name(request.user)} cancelled their seat" if was == "accepted" else f"{first_name(request.user)} withdrew their request"
+        notify(booking.ride.host, "cancelled", title, f"{when(booking.ride.depart_at)} · {reason or 'No reason given'}", request.user, booking)
     booking.refresh_from_db()
     return Response(guest_view(booking))
 
@@ -410,7 +436,8 @@ def send_location(request, ride_id):
     if ride.status not in ACTIVE_RIDE:
         raise ApiError("not_allowed_now", "This ride has ended.", 409)
     data = valid(LocationIn, request.data)
-    Location.objects.update_or_create(ride=ride, user=request.user, defaults={"coords": data["coords"], "heading": data.get("heading")})
+    Location.objects.update_or_create(ride=ride, user=request.user,
+                                      defaults={"coords": data["coords"], "heading": data.get("heading"), "at_meet_point": data["atMeetPoint"]})
     return ok()
 
 
@@ -422,7 +449,7 @@ def live(request, ride_id):
     locations = {loc.user_id: loc for loc in ride.locations.all()}
     guests = []
     if ride.host_id == request.user.id:
-        guests = [{"bookingId": b.id, "name": display_name(b.guest), **position(locations[b.guest_id])}
+        guests = [{"bookingId": b.id, "name": display_name(b.guest), **position(locations[b.guest_id]), "atMeetPoint": locations[b.guest_id].at_meet_point}
                   for b in ride.bookings.filter(status__in=SEES_PHONE).select_related("guest") if b.guest_id in locations]
     return Response({"host": position(locations.get(ride.host_id)), "guests": guests})
 
@@ -441,3 +468,63 @@ def sos(request, ride_id):
         except Exception:
             pass
     return ok()
+
+
+# ---------- alerts and history ----------
+
+def alert_view(a):
+    return {"id": a.id, "kind": a.kind, "title": a.title, "text": a.text, "at": a.created, "read": a.read,
+            "who": person(a.who) if a.who else None, "rideId": a.ride_id, "bookingId": a.booking_id}
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+@api_view(["GET"])
+def alerts(request):
+    """Your Alerts tab, newest first (the last 100)."""
+    return Response([alert_view(a) for a in request.user.alerts.select_related("who")[:100]])
+
+
+@extend_schema(request=AlertsReadIn, responses=OpenApiTypes.OBJECT)
+@api_view(["POST"])
+def read_alerts(request):
+    """Mark alerts as read: the ones in `ids`, or all of them when `ids` is left out."""
+    ids = valid(AlertsReadIn, request.data).get("ids")
+    unread = request.user.alerts.filter(read=False)
+    (unread if ids is None else unread.filter(pk__in=ids)).update(read=True)
+    return ok()
+
+
+@extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+@api_view(["DELETE"])
+def remove_alert(request, alert_id):
+    get_object_or_404(request.user.alerts, pk=alert_id).delete()
+    return ok()
+
+
+@extend_schema(responses=OpenApiTypes.OBJECT)
+@api_view(["GET"])
+def history(request):
+    """Past rides, newest first, and the numbers on Account. kmShared = km you travelled with a colleague:
+    your part of the route as a guest, and the longest guest's part when you hosted."""
+    user = request.user
+    taken = list(Booking.objects.filter(guest=user, status="picked_up", ride__status="completed").select_related("ride__host"))
+    given = Ride.objects.filter(host=user, status="completed").prefetch_related(
+        Prefetch("bookings", Booking.objects.filter(status="picked_up").select_related("guest"), to_attr="riders"))
+    rows, km_shared, rides_given = [], 0.0, 0
+    for b in taken:
+        km = geo.length_km(shared_part(b.ride, b.meet)[3])
+        office = OFFICES[b.ride.office]["name"]
+        ends = (b.meet_name, office) if b.ride.direction == "to_office" else (office, b.meet_name)
+        rows.append({"role": "guest", "rideId": b.ride_id, "when": b.ride.depart_at, "from": ends[0], "to": ends[1],
+                     "with": [display_name(b.ride.host)], "km": round(km, 1)})
+        km_shared += km
+    for r in given:
+        if not r.riders:  # completed, but nobody came along
+            continue
+        km = max(geo.length_km(shared_part(r, b.meet)[3]) for b in r.riders)
+        rows.append({"role": "host", "rideId": r.id, "when": r.depart_at, "from": r.start["name"], "to": r.end["name"],
+                     "with": [display_name(b.guest) for b in r.riders], "km": round(km, 1)})
+        km_shared += km
+        rides_given += 1
+    rows.sort(key=lambda row: row["when"], reverse=True)
+    return Response({"stats": {"ridesTaken": len(taken), "ridesGiven": rides_given, "kmShared": round(km_shared)}, "rides": rows[:50]})

@@ -170,3 +170,131 @@ class RideTests(APITestCase):
         self.call(self.host, "post", f"/v1/rides/{ride['id']}/sos", {"coords": [77.63, 12.93]})
         self.assertEqual(Sos.objects.get().user, self.host)
         self.call(self.guest, "post", f"/v1/rides/{ride['id']}/sos", {}, 404)  # not on the ride
+
+    # ---------- part 3: alerts, history, vehicles, account deletion ----------
+
+    def alerts(self, user):
+        return self.call(user, "get", "/v1/me/alerts")
+
+    def test_alerts_follow_the_ride(self):
+        ride = self.offer()
+        booking = self.request_seat(self.guest, ride["id"])
+        [req] = self.alerts(self.host)
+        self.assertEqual((req["kind"], req["title"], req["read"], req["who"]["name"]), ("request", "Guest asked for a seat", False, "Guest One"))
+        self.assertIn("pickup at Near Ejipura signal", req["text"])
+
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/accept")
+        self.assertEqual(self.alerts(self.guest)[0]["title"], "Host accepted your request")
+        self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/cancel", {"reason": "Running late"})
+        newest, oldest = self.alerts(self.host)
+        self.assertEqual((newest["kind"], newest["title"], oldest["kind"]), ("cancelled", "Guest cancelled their seat", "request"))
+        self.assertIn("Running late", newest["text"])
+
+        declined = self.request_seat(self.guest2, ride["id"])
+        self.call(self.host, "post", f"/v1/bookings/{declined['id']}/reject")
+        self.assertEqual(self.alerts(self.guest2)[0]["kind"], "declined")
+
+        third = self.request_seat(self.guest, ride["id"])
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/cancel", {"reason": "Car trouble"})
+        mine = self.alerts(self.guest)[0]
+        self.assertEqual((mine["kind"], mine["bookingId"]), ("cancelled", third["id"]))
+        self.assertIn("Car trouble", mine["text"])
+
+    def test_read_and_remove_alerts(self):
+        ride = self.offer()
+        self.request_seat(self.guest, ride["id"])
+        b2 = self.request_seat(self.guest2, ride["id"])
+        first, second = self.alerts(self.host)
+        self.call(self.host, "post", "/v1/me/alerts/read", {"ids": [first["id"]]})
+        self.assertEqual([a["read"] for a in self.alerts(self.host)], [True, False])
+        self.call(self.host, "post", "/v1/me/alerts/read")  # no ids = all
+        self.assertTrue(all(a["read"] for a in self.alerts(self.host)))
+        self.as_delete(self.guest, f"/v1/me/alerts/{second['id']}", 404)  # someone else's alert
+        self.as_delete(self.host, f"/v1/me/alerts/{second['id']}")
+        self.assertEqual([a["id"] for a in self.alerts(self.host)], [first["id"]])
+        self.assertEqual(b2["status"], "requested")
+
+    def as_delete(self, user, url, status=200):
+        token, _ = Token.objects.get_or_create(user=user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.key}")
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, status, res.data)
+        return res.data
+
+    def test_history_and_stats(self):
+        ride = self.offer()
+        booking = self.request_seat(self.guest, ride["id"])
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/accept")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+        self.assertEqual(self.call(self.guest, "get", "/v1/me/history")["rides"], [])  # not finished yet
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/picked-up")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/complete")
+
+        guest = self.call(self.guest, "get", "/v1/me/history")
+        [row] = guest["rides"]
+        self.assertEqual((row["role"], row["from"], row["to"], row["with"]), ("guest", "Near Ejipura signal", "Perficient Bellandur", ["Host"]))
+        self.assertAlmostEqual(row["km"], geo.km(ROUTE[1], ROUTE[2]), delta=0.2)
+        self.assertEqual((guest["stats"]["ridesTaken"], guest["stats"]["ridesGiven"]), (1, 0))
+
+        host = self.call(self.host, "get", "/v1/me/history")
+        self.assertEqual((host["stats"]["ridesGiven"], host["rides"][0]["with"]), (1, ["Guest One"]))
+        self.assertGreater(host["stats"]["kmShared"], 0)
+
+    def test_vehicles_default_edit_remove(self):
+        bike = self.call(self.host, "post", "/v1/me/vehicles", {"type": "bike", "number": "KA01HX8812", "model": "Pulsar", "mfgMonth": 1, "mfgYear": 2020, "seats": 1, "helmet": "guest"}, 201)
+        car, second = self.call(self.host, "get", "/v1/me/vehicles")
+        self.assertEqual((car["isDefault"], second["isDefault"]), (True, False))  # first one added is the default
+
+        listed = self.call(self.host, "post", f"/v1/me/vehicles/{bike['id']}/default")
+        self.assertEqual([v["isDefault"] for v in listed], [False, True])
+        self.assertEqual(self.call(self.host, "get", "/v1/me")["vehicle"]["id"], bike["id"])
+
+        self.assertEqual(self.call_patch(self.host, f"/v1/me/vehicles/{car['id']}", {"seats": 3})["seats"], 3)
+        self.assertEqual(list(self.call_patch(self.host, f"/v1/me/vehicles/{bike['id']}", {"seats": 2}, 400)["fields"]), ["seats"])
+
+        ride = self.offer(vehicleId=car["id"])
+        self.assertEqual(self.call_patch(self.host, f"/v1/me/vehicles/{car['id']}", {"seats": 2}, 409)["code"], "vehicle_in_use")
+        self.assertEqual(self.as_delete(self.host, f"/v1/me/vehicles/{car['id']}", 409)["code"], "vehicle_in_use")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/cancel")
+        self.as_delete(self.host, f"/v1/me/vehicles/{car['id']}")
+        self.assertEqual([v["id"] for v in self.call(self.host, "get", "/v1/me/vehicles")], [bike["id"]])
+        self.assertEqual(Ride.objects.get(pk=ride["id"]).vehicle_id, car["id"])  # past rides keep their vehicle
+
+    def call_patch(self, user, url, data, status=200):
+        token, _ = Token.objects.get_or_create(user=user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token.key}")
+        res = self.client.patch(url, data, format="json")
+        self.assertEqual(res.status_code, status, res.data)
+        return res.data
+
+    def test_delete_account(self):
+        ride = self.offer()
+        booking = self.request_seat(self.guest, ride["id"])
+        self.assertEqual(self.call(self.guest, "post", "/v1/me/delete", {"password": "wrong"}, 400)["code"], "wrong_password")
+        self.assertEqual(self.call(self.guest, "post", "/v1/me/delete", {"password": PASSWORD}, 409)["code"], "already_on_trip")
+        self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/cancel")
+        self.call(self.guest, "post", "/v1/me/delete", {"password": PASSWORD})
+
+        self.assertEqual(self.client.get("/v1/me").status_code, 401)  # signed out
+        gone = User.objects.get(pk=self.guest.pk)
+        self.assertEqual((gone.username, gone.email, gone.phone, gone.name, gone.is_active), (f"deleted-{gone.pk}", "", "", "Deleted user", False))
+        self.client.credentials()
+        res = self.client.post("/v1/auth/login", {"email": "guest.one@perficient.com", "password": PASSWORD}, format="json")
+        self.assertEqual(res.data["code"], "not_registered")
+        self.assertEqual(self.client.post("/v1/auth/signup", {"email": "guest.one@perficient.com"}, format="json").status_code, 200)  # can join again
+        self.assertEqual(self.alerts(self.host)[0]["who"]["name"], "Deleted user")  # the host's history no longer names them
+
+    def test_meet_point_flag_and_pickup_order(self):
+        ride = self.offer()
+        late = self.call(self.guest, "post", f"/v1/rides/{ride['id']}/bookings", {"meetPoint": [77.66, 12.9302], "meetName": "Ejipura"}, 201)
+        early = self.call(self.guest2, "post", f"/v1/rides/{ride['id']}/bookings", {"meetPoint": [77.63, 12.93], "meetName": "Koramangala 6th Block"}, 201)
+        for b in (late, early):
+            self.call(self.host, "post", f"/v1/bookings/{b['id']}/accept")
+        bookings = self.call(self.host, "get", "/v1/me/trip")["ride"]["bookings"]
+        by_route = [b["meetName"] for b in sorted(bookings, key=lambda b: b["alongKm"])]
+        self.assertEqual(by_route, ["Koramangala 6th Block", "Ejipura"])  # driving order, not accept order
+
+        self.call(self.guest2, "post", f"/v1/rides/{ride['id']}/locations", {"coords": [77.6301, 12.9301], "atMeetPoint": True})
+        self.call(self.guest, "post", f"/v1/rides/{ride['id']}/locations", {"coords": [77.65, 12.935]})
+        waiting = {g["name"]: g["atMeetPoint"] for g in self.call(self.host, "get", f"/v1/rides/{ride['id']}/live")["guests"]}
+        self.assertEqual(waiting, {"Guest Two": True, "Guest One": False})
