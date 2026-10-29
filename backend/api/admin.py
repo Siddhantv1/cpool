@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Booking, EmailCode, Ride, Sos, User, Vehicle
+from .models import Alert, Booking, EmailCode, Ride, Sos, User, Vehicle
 
 
 @admin.register(User)
@@ -14,7 +14,7 @@ class CpoolUserAdmin(UserAdmin):
 
 @admin.register(Vehicle)
 class VehicleAdmin(admin.ModelAdmin):
-    list_display = ["number", "model", "type", "seats", "owner"]
+    list_display = ["number", "model", "type", "seats", "owner", "removed"]
     search_fields = ["number", "owner__username"]
 
 
@@ -50,3 +50,9 @@ class SosAdmin(admin.ModelAdmin):
     list_display = ["created", "user", "ride", "coords", "handled"]
     list_filter = ["handled"]
     list_editable = ["handled"]
+
+
+@admin.register(Alert)
+class AlertAdmin(admin.ModelAdmin):
+    list_display = ["created", "user", "kind", "title", "read"]
+    list_filter = ["kind", "read"]

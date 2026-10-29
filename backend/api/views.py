@@ -10,6 +10,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core import signing
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
+from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -22,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import exception_handler
 
-from .models import EmailCode, User, Vehicle
+from .models import ACTIVE_BOOKING, ACTIVE_RIDE, Booking, EmailCode, Location, Ride, User, Vehicle
 
 CODE_MINUTES = 10
 CODE_TRIES = 5
@@ -180,7 +181,7 @@ def login(request):
         raise ApiError("account_disabled", "This account is turned off. Contact the Cpool admin.", 403)
     # ponytail: one token per user, shared by all their phones; logging out on one logs out all. Use django-rest-knox if that bites.
     token, _ = Token.objects.get_or_create(user=user)
-    vehicle = user.vehicles.first()
+    vehicle = user.vehicle()
     return Response({"token": token.key, "role": user.role, "vehicle": VehicleSerializer(vehicle).data if vehicle else None})
 
 
@@ -198,10 +199,14 @@ class VehicleSerializer(serializers.ModelSerializer):
     mfgMonth = serializers.IntegerField(source="mfg_month", min_value=1, max_value=12)
     mfgYear = serializers.IntegerField(source="mfg_year", min_value=1990)
     colour = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
+    isDefault = serializers.SerializerMethodField()
 
     class Meta:
         model = Vehicle
-        fields = ["id", "type", "number", "model", "mfgMonth", "mfgYear", "colour", "seats", "helmet"]
+        fields = ["id", "type", "number", "model", "mfgMonth", "mfgYear", "colour", "seats", "helmet", "isDefault"]
+
+    def get_isDefault(self, vehicle) -> bool:
+        return vehicle.owner.vehicle() == vehicle
 
     def validate_number(self, value):
         plate = re.sub(r"[^A-Z0-9]", "", value.upper())
@@ -215,14 +220,18 @@ class VehicleSerializer(serializers.ModelSerializer):
         return value
 
     def validate(self, data):
-        data["colour"] = data.get("colour") or ""
-        if data["type"] == "bike":
-            if data["seats"] != 1:
+        if "colour" in data or not self.instance:
+            data["colour"] = data.get("colour") or ""
+        # When editing, check the rules against the vehicle as it will be after the change.
+        now = {f: getattr(self.instance, f) for f in ("type", "seats", "helmet")} if self.instance else {}
+        now.update({f: data[f] for f in ("type", "seats", "helmet") if f in data})
+        if now["type"] == "bike":
+            if now["seats"] != 1:
                 raise serializers.ValidationError({"seats": "A bike has 1 guest seat."})
-            if data.get("helmet") not in ("host", "guest"):
+            if now.get("helmet") not in ("host", "guest"):
                 raise serializers.ValidationError({"helmet": "Say who brings the pillion helmet."})
         else:
-            if not 1 <= data["seats"] <= 7:
+            if not 1 <= now["seats"] <= 7:
                 raise serializers.ValidationError({"seats": "A car can offer 1 to 7 guest seats."})
             data["helmet"] = None
         return data
@@ -239,7 +248,7 @@ class MeSerializer(serializers.ModelSerializer):
         read_only_fields = ["email"]
 
     def get_vehicle(self, user) -> dict | None:
-        vehicle = user.vehicles.first()
+        vehicle = user.vehicle()
         return VehicleSerializer(vehicle).data if vehicle else None
 
 
@@ -277,8 +286,63 @@ def change_password(request):
 @api_view(["GET", "POST"])
 def vehicles(request):
     if request.method == "GET":
-        return Response(VehicleSerializer(request.user.vehicles.all(), many=True).data)
+        return Response(VehicleSerializer(request.user.active_vehicles(), many=True).data)
     s = VehicleSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     s.save(owner=request.user)
     return Response(s.data, status=201)
+
+
+def my_vehicle(request, vehicle_id, editing=True):
+    vehicle = request.user.active_vehicles().filter(pk=vehicle_id).first()
+    if not vehicle:
+        raise ApiError("not_found", "No such vehicle.", 404)
+    if editing and Ride.objects.filter(vehicle=vehicle, status__in=ACTIVE_RIDE).exists():
+        raise ApiError("vehicle_in_use", "This vehicle is on a ride right now. Change it after the ride.", 409)
+    return vehicle
+
+
+@extend_schema(request=VehicleSerializer, responses=VehicleSerializer)
+@api_view(["PATCH", "DELETE"])
+def vehicle(request, vehicle_id):
+    v = my_vehicle(request, vehicle_id)
+    if request.method == "DELETE":
+        v.removed = True  # kept for past rides; gone from the app
+        v.save(update_fields=["removed"])
+        return ok()
+    s = VehicleSerializer(v, data=request.data, partial=True)
+    s.is_valid(raise_exception=True)
+    s.save()
+    return Response(s.data)
+
+
+@extend_schema(request=None, responses=VehicleSerializer(many=True))
+@api_view(["POST"])
+def make_default(request, vehicle_id):
+    request.user.default_vehicle = my_vehicle(request, vehicle_id, editing=False)
+    request.user.save(update_fields=["default_vehicle"])
+    return Response(VehicleSerializer(request.user.active_vehicles(), many=True).data)
+
+
+@extend_schema(request=body("delete_account_body", {"password": serializers.CharField()}), responses=OK)
+@api_view(["POST"])
+def delete_account(request):
+    """Account -> Delete account. Past rides stay for the other people in them, but nothing in them
+    points back to you: name, email, phone and number plates are wiped."""
+    user = request.user
+    if not user.check_password(request.data.get("password", "")):
+        raise ApiError("wrong_password", "Your password is incorrect.")
+    if Ride.objects.filter(host=user, status__in=ACTIVE_RIDE).exists() or Booking.objects.filter(guest=user, status__in=ACTIVE_BOOKING).exists():
+        raise ApiError("already_on_trip", "Finish or cancel your current trip first.", 409)
+    with transaction.atomic():
+        EmailCode.objects.filter(email=user.email).delete()
+        Token.objects.filter(user=user).delete()
+        user.alerts.all().delete()
+        Location.objects.filter(user=user).delete()
+        user.vehicles.update(removed=True, number="", model="Removed vehicle", colour="")
+        user.username, user.email, user.name = f"deleted-{user.pk}", "", "Deleted user"
+        user.first_name = user.last_name = user.phone = user.gender = ""
+        user.role, user.default_vehicle, user.is_active = None, None, False
+        user.set_unusable_password()
+        user.save()
+    return ok()

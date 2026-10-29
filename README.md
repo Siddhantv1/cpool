@@ -89,7 +89,14 @@ All routes except auth need `Authorization: Bearer <token>`. Errors are HTTP 4xx
 | POST | `/v1/auth/logout` | → `{ok}` (the token stops working) |
 | GET / PUT / PATCH | `/v1/me` | `{email, name, gender, phone, role, vehicle}`; PUT and PATCH change only the fields sent (`name`, `gender`, `phone`, `role`). `phone` like `+919876543210` |
 | GET | `/v1/me/trip` | what Home shows (poll it): `{ride, booking}`. `ride` = the ride you host (with its `bookings`), `booking` = your latest seat request (kept 24 h after it ends, so you see "declined") |
-| GET | `/v1/me/vehicles` | your vehicles, first one = default |
+| GET | `/v1/me/vehicles` | your vehicles; `isDefault` marks the default (the one you picked, else the first added) |
+| PATCH / DELETE | `/v1/me/vehicles/{id}` | edit (same fields as adding; only the ones sent change) · remove (kept for past rides, gone from the app). Error: `vehicle_in_use` while that vehicle is on an open ride |
+| POST | `/v1/me/vehicles/{id}/default` | make it the default → your vehicle list |
+| GET | `/v1/me/alerts` | Alerts tab, newest first: `[{id, kind: "request" \| "accepted" \| "declined" \| "cancelled", title, text, at, read, who: {name, initials}, rideId, bookingId}]` |
+| POST | `/v1/me/alerts/read` | `{ids?}` → marks those alerts read (all of them if `ids` is left out) |
+| DELETE | `/v1/me/alerts/{id}` | removes one alert (swipe away) |
+| GET | `/v1/me/history` | My rides → Past and the Account numbers: `{stats: {ridesTaken, ridesGiven, kmShared}, rides: [{role: "guest" \| "host", rideId, when, from, to, with: [names], km}]}` (finished rides) |
+| POST | `/v1/me/delete` | `{password}` → deletes your account: signs you out and wipes your name, email, phone and number plates (past rides stay for the other people, shown as "Deleted user"). Errors: `wrong_password`, `already_on_trip` |
 | PUT | `/v1/me/devices` | push token (not built yet) |
 | POST | `/v1/me/password` | `{current, new}` → `{ok, token}`. Other phones are signed out: use the new token from now on. Errors: `wrong_password`, `weak_password` |
 | PUT | `/v1/me` | `{role: "guest" \| "host"}` set at first-time setup. Login returns `role` (null on first sign-in) and `vehicle` |

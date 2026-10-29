@@ -12,6 +12,15 @@ class User(AbstractUser):
     name = models.CharField(max_length=40, blank=True)
     gender = models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=16, blank=True)  # shown to the other person only once a seat is confirmed
+    default_vehicle = models.ForeignKey("Vehicle", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+
+    def active_vehicles(self):
+        return self.vehicles.filter(removed=False)
+
+    def vehicle(self):
+        """The default vehicle: the one picked in the app, else the first one added."""
+        v = self.default_vehicle
+        return v if v and not v.removed else self.active_vehicles().first()
 
 
 class Vehicle(models.Model):
@@ -25,9 +34,11 @@ class Vehicle(models.Model):
     seats = models.PositiveSmallIntegerField()  # guest seats: bike 1, car 1-7
     helmet = models.CharField(max_length=5, choices=[("host", "Host carries a spare"), ("guest", "Guest brings own")], null=True, blank=True)
     created = models.DateTimeField(auto_now_add=True)
+    # Removed vehicles stay in the database so past rides can still show them; the app never sees them again.
+    removed = models.BooleanField(default=False)
 
     class Meta:
-        ordering = ["created"]  # the first vehicle is the default one
+        ordering = ["created"]
 
     def __str__(self):
         return f"{self.number} · {self.model}"
@@ -133,3 +144,24 @@ class Sos(models.Model):
 
     def __str__(self):
         return f"SOS from {self.user.username} at {self.created:%d %b %H:%M}"
+
+
+class Alert(models.Model):
+    """One line in the app's Alerts tab. Created when something happens to your ride or seat request."""
+
+    KINDS = ["request", "accepted", "declined", "cancelled"]  # same kinds as the app's Alerts tab
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="alerts")
+    kind = models.CharField(max_length=9, choices=[(k, k) for k in KINDS])
+    title = models.CharField(max_length=120)
+    text = models.CharField(max_length=200)
+    who = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")  # the other person
+    ride = models.ForeignKey(Ride, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, null=True, blank=True, related_name="+")
+    read = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created", "-id"]
+
+    def __str__(self):
+        return f"{self.user.username}: {self.title}"
