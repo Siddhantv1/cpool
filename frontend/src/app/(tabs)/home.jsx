@@ -228,7 +228,10 @@ function FindView() {
 // ---------- Offer a ride ----------
 function OfferView({ vehicle }) {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
-  const { published, requests, passenger, places, booking } = useTrips();
+  const { published, requests, passengers, places, booking } = useTrips();
+  const seats = vehicle.type === "bike" ? 1 : Number(vehicle.seats) || 1;
+  const rideSeats = published?.seats ?? seats;
+  const full = passengers.length >= rideSeats;
   const riding = booking && ["requested", "accepted"].includes(booking.status) ? booking : null;
   const [when, setWhen] = useState(defaultWhen);
   const [picking, setPicking] = useState(false);
@@ -236,7 +239,7 @@ function OfferView({ vehicle }) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   function onCancelRide() {
-    const who = passenger ? `${passenger.name.split(" ")[0]} will be told and can find another ride.` : "Colleagues won’t be able to request a seat any more.";
+    const who = passengers.length ? `${passengers.map((p) => p.name.split(" ")[0]).join(", ")} will be told and can find another ride.` : "Colleagues won’t be able to request a seat any more.";
     Alert.alert("Cancel this ride?", who, [
       { text: "Keep ride", style: "cancel" },
       {
@@ -251,7 +254,7 @@ function OfferView({ vehicle }) {
   }
 
   function onPublish() {
-    publishRide({ from: places.from, to: places.to, when: whenLabel(when), at: when });
+    publishRide({ from: places.from, to: places.to, when: whenLabel(when), at: when, seats });
     // shortcut: example requests arrive a few seconds after publishing; real ones come from the backend as push notifications.
     timer.current = setTimeout(receiveRequests, 4000);
   }
@@ -336,17 +339,19 @@ function OfferView({ vehicle }) {
         />
       ) : null}
 
-      {passenger ? (
+      {passengers.length ? (
         <>
-          <Section title="Next ride" />
+          <Section title={`Your guests · ${passengers.length} of ${rideSeats} seats filled`} />
           <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 4, padding: spacing.md, gap: spacing.md }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-              <Avatar initials={passenger.initials} color="#7C3AED" />
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: "700", fontSize: fontSize.md }}>{passenger.name}</Text>
-                <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Pickup {passenger.pickupTime} · {passenger.pickup}</Text>
+            {passengers.map((p) => (
+              <View key={p.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+                <Avatar initials={p.initials} color="#7C3AED" />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: colors.text, fontWeight: "700", fontSize: fontSize.md }}>{p.name}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Pickup {p.pickupTime} · {p.pickup}</Text>
+                </View>
               </View>
-            </View>
+            ))}
             <Pressable onPress={() => router.push("/drive")} accessibilityRole="button" style={{ backgroundColor: colors.green, borderRadius: radius.lg, paddingVertical: spacing.md - 2, alignItems: "center" }}>
               <Text style={{ color: colors.onGreen, fontWeight: "800" }}>Start ride</Text>
             </Pressable>
@@ -355,6 +360,9 @@ function OfferView({ vehicle }) {
       ) : null}
 
       <Section title={requests.length ? `Seat requests · ${requests.length} new` : "Seat requests"} />
+      {published && full && requests.length ? (
+        <Text style={{ color: colors.warning, fontWeight: "700", fontSize: fontSize.sm }}>Your ride is full. You can still open requests to decline them.</Text>
+      ) : null}
       {requests.length ? (
         requests.map((r) => (
           <Pressable

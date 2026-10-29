@@ -24,7 +24,7 @@ export default function Cancelled() {
   const copy = COPY[kind] ?? COPY.host;
   const booking = getTrips().booking;
   const host = booking?.host ?? HOSTS[0];
-  const others = HOSTS.filter((h) => h.id !== host.id);
+  const others = HOSTS.filter((h) => h.id !== host.id && h.seatsFree > 0); // full rides aren't offered
   const [noteTitle, noteText] = copy.note(host.name.split(" ")[0], booking?.reason);
 
   useEffect(() => {

@@ -9,7 +9,7 @@ let state = {
   booking: null, // guest: { host, pickup, drop, status: "requested" | "accepted" | "declined" | "cancelled" (by host) | "withdrawn" (by you), reason }
   published: null, // host: { from, to, when }
   requests: [], // host: pending seat requests
-  passenger: null, // host: accepted request (shown as "Next ride")
+  passengers: [], // host: accepted guests, at most published.seats
   // Alerts tab, newest first: { id, kind, title, text, at, read, who?: { initials, color }, reqId? }
   alerts: ALERTS.map((a) => ({ ...a, at: Date.now() - a.minsAgo * 60000, read: true })),
   saved: { home: HOME, office: OFFICES[0] }, // Account → Saved places
@@ -117,19 +117,25 @@ export function clearBooking() {
 }
 
 // ----- host -----
+// ride: { from, to, when, at, seats } (seats = free seats in your vehicle: car seats, or 1 on a bike)
 export function publishRide(ride) {
-  set({ published: ride, requests: [] });
+  set({ published: ride, requests: [], passengers: [] });
 }
 // Example: colleagues' requests come in shortly after publishing.
 export const receiveRequests = () =>
   set({ requests: REQUESTS, alerts: [...REQUESTS.map((r) => alert("request", `${first(r.name)} asked for a seat`, `${r.pickupTime} · pickup at ${r.pickup} · ${r.rides} rides`, { reqId: r.id, who: guestWho(r) })), ...state.alerts] });
+// Accept or decline a seat request. Returns false (and changes nothing) if accepting when every seat is taken.
 export function answerRequest(id, accept) {
   const req = state.requests.find((r) => r.id === id);
-  set({ requests: state.requests.filter((r) => r.id !== id), passenger: accept ? req : state.passenger });
+  if (!req) return false;
+  if (accept && state.passengers.length >= (state.published?.seats ?? 1)) return false;
+  set({ requests: state.requests.filter((r) => r.id !== id), passengers: accept ? [...state.passengers, req] : state.passengers });
+  return true;
 }
 export function cancelPublished() {
   if (!state.published) return;
-  const text = state.passenger ? `${first(state.passenger.name)} has been told` : "No one had booked yet";
-  set({ published: null, passenger: null, requests: [], alerts: [alert("cancelled", `You cancelled your ride · ${state.published.when}`, text, state.passenger ? { who: guestWho(state.passenger) } : {}), ...state.alerts] });
+  const guests = state.passengers;
+  const text = guests.length ? `${guests.map((p) => first(p.name)).join(", ")} ${guests.length === 1 ? "has" : "have"} been told` : "No one had booked yet";
+  set({ published: null, passengers: [], requests: [], alerts: [alert("cancelled", `You cancelled your ride · ${state.published.when}`, text, guests.length ? { who: guestWho(guests[0]) } : {}), ...state.alerts] });
 }
-export const finishHosting = () => set({ published: null, passenger: null, requests: [] });
+export const finishHosting = () => set({ published: null, passengers: [], requests: [] });

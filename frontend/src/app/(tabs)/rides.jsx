@@ -9,7 +9,7 @@ import { cancelBooking, useTrips } from "../../lib/trips";
 
 export default function MyRides() {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
-  const { booking, passenger, published } = useTrips();
+  const { booking, passengers, published } = useTrips();
   const upcoming = booking?.status === "accepted";
   const waiting = booking?.status === "requested";
 
@@ -25,7 +25,7 @@ export default function MyRides() {
         <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xl - 4, fontWeight: "800" }}>My rides</Text>
 
         <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>UPCOMING</Text>
-        {!upcoming && !waiting && !passenger && !published ? (
+        {!upcoming && !waiting && !passengers.length && !published ? (
           <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: rs(4) }}>
             <Text style={{ color: colors.text, fontWeight: "700" }}>No upcoming rides</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Find a ride or offer one from Home.</Text>
@@ -63,11 +63,11 @@ export default function MyRides() {
                 <MaterialCommunityIcons name="steering" size={rs(26)} color={colors.green} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>You’re hosting · {published.when}</Text>
-                  <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{passenger ? `With ${passenger.name}` : "Waiting for requests"}</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{passengers.length ? `With ${passengers.map((p) => p.name.split(" ")[0]).join(", ")}` : "Waiting for requests"}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={rs(18)} color={colors.textMuted} />
               </View>,
-              () => router.push(passenger ? "/drive" : "/home"),
+              () => router.push(passengers.length ? "/drive" : "/home"),
             )
           : null}
 

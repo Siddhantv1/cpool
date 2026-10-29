@@ -25,11 +25,11 @@ export const PLACES = [
 
 // Hosts in "Find a ride". start / from = where their drive begins.
 export const HOSTS = [
-  { id: "h1", initials: "AM", color: "#BE185D", name: "Ananya M.", phone: "+919845011223", vehicle: "Red Maruti Swift", type: "car", plate: "KA 51 MJ 4410", start: [77.619, 12.9345], from: "Koramangala",
+  { id: "h1", initials: "AM", color: "#BE185D", name: "Anfia.", phone: "+917736724567", vehicle: "Red Maruti Swift", type: "car", plate: "KA 51 MJ 4410", start: [77.619, 12.9345], from: "Koramangala",
     time: "8:35", walkTo: "300 m", ride: "8.1 km", walkFrom: "80 m", seatsFree: 2, seatsTotal: 3, match: "Full match", full: true },
-  { id: "h2", initials: "VS", color: "#1D4ED8", name: "Vikram S.", phone: "+919880044556", vehicle: "Royal Enfield Classic 350", type: "bike", plate: "KA 03 KL 7781", start: [77.6387, 12.961], from: "Domlur",
+  { id: "h2", initials: "VS", color: "#1D4ED8", name: "Aswin.", phone: "+918089595332", vehicle: "Royal Enfield Classic 350", type: "bike", plate: "KA 03 KL 7781", start: [77.6387, 12.961], from: "Domlur",
     time: "8:45", walkTo: "150 m", ride: "7.4 km", walkFrom: "0 m", seatsFree: 1, seatsTotal: 1, helmet: true, match: "Full match", full: true },
-  { id: "h3", initials: "MJ", color: "#0F766E", name: "Meera J.", phone: "+919900077889", vehicle: "Grey Tata Nexon", type: "car", plate: "KA 53 MD 2205", start: [77.648, 12.918], from: "HSR Layout",
+  { id: "h3", initials: "MJ", color: "#0F766E", name: "Meera J.", phone: "+910000000000", vehicle: "Grey Tata Nexon", type: "car", plate: "KA 53 MD 2205", start: [77.648, 12.918], from: "HSR Layout",
     time: "8:55", walkTo: "750 m", ride: "5.2 km", walkFrom: "350 m", seatsFree: 3, seatsTotal: 4, match: "Partial match · longer walk", full: false },
 ];
 
