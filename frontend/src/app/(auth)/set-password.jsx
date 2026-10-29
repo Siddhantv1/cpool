@@ -5,28 +5,33 @@ import Button from "../../components/Button";
 import Screen from "../../components/Screen";
 import TextField from "../../components/TextField";
 import { useTheme } from "../../constants/theme";
-import { setPassword } from "../../lib/api";
+import { isMobile, setPassword } from "../../lib/api";
 import { passwordRules } from "../../lib/password";
 
-// Used by both flows: purpose = "signup" (new account) or "reset" (forgot password).
+// Used by both flows: purpose = "signup" (new account: mobile number + password) or "reset" (forgot password).
 export default function SetPassword() {
   const { token, email, purpose } = useLocalSearchParams();
   const { colors, spacing, fontSize } = useTheme();
   const [password, setPasswordText] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const isReset = purpose === "reset";
 
   const rules = passwordRules(password, confirm);
-  const allOk = rules.every((r) => r.ok);
+  // No mobile number, no account: colleagues need it to call on ride day.
+  const phoneOk = isReset || isMobile(phone);
+  const phoneError = phoneTouched && !phoneOk ? "Enter your 10-digit mobile number" : "";
+  const allOk = phoneOk && rules.every((r) => r.ok);
 
   async function onSave() {
     if (!allOk) return;
     setError("");
     setLoading(true);
     try {
-      await setPassword(token, password);
+      await setPassword(token, password, isReset ? undefined : phone);
       const notice = isReset ? "Password updated." : "Account created. Sign in to continue";
       // Clear the sign-up / reset screens so Back doesn't return to them.
       if (router.canDismiss()) router.dismissAll();
@@ -41,15 +46,31 @@ export default function SetPassword() {
   return (
     <Screen
       back
-      title={isReset ? "Set a new password" : "Create a password"}
-      footer={<Button title="Save password" onPress={onSave} loading={loading} disabled={!allOk} />}
+      title={isReset ? "Set a new password" : "Set up your account"}
+      subtitle={isReset ? undefined : "Add your mobile number and create a password."}
+      footer={<Button title={isReset ? "Save password" : "Create account"} onPress={onSave} loading={loading} disabled={!allOk} />}
     >
+      {isReset ? null : (
+        <TextField
+          label="Mobile number"
+          prefix="+91"
+          value={phone}
+          onChangeText={(t) => setPhone(t.replace(/\D/g, ""))}
+          onBlur={() => setPhoneTouched(true)}
+          error={phoneError}
+          keyboardType="number-pad"
+          maxLength={10}
+          autoFocus
+          autoComplete="tel-national"
+          textContentType="telephoneNumber"
+        />
+      )}
       <TextField
         label="Password"
         value={password}
         onChangeText={setPasswordText}
         secure
-        autoFocus
+        autoFocus={isReset}
         autoComplete="new-password"
         textContentType="newPassword"
       />

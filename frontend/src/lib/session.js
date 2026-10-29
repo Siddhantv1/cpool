@@ -1,4 +1,4 @@
-// Who is signed in right now: { email, token, role: "guest" | "host" | null, vehicle, name, gender, photo }.
+// Who is signed in right now: { email, token, role: "guest" | "host" | null, vehicle, name, gender, photo, phone: "+91…" }.
 // shortcut: kept in memory, so closing the app signs you out; save the token with expo-secure-store when the real backend is connected.
 let current = null;
 

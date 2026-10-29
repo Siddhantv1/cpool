@@ -3,9 +3,9 @@ import { Pressable, Text, TextInput, View } from "react-native";
 import { useTheme } from "../constants/theme";
 
 // label is shown as the placeholder and read by screen readers.
-// secure = password field with a Show / Hide button.
+// secure = password field with a Show / Hide button. prefix = fixed text before the input (e.g. "+91").
 // Extra props (value, onChangeText, keyboardType...) go straight to TextInput.
-export default function TextField({ label, error, secure = false, ...inputProps }) {
+export default function TextField({ label, error, secure = false, prefix, ...inputProps }) {
   const { colors, spacing, fontSize, radius } = useTheme();
   const [hidden, setHidden] = useState(true);
 
@@ -22,6 +22,7 @@ export default function TextField({ label, error, secure = false, ...inputProps 
           paddingHorizontal: spacing.md,
         }}
       >
+        {prefix ? <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700", marginRight: spacing.sm }}>{prefix}</Text> : null}
         <TextInput
           accessibilityLabel={label}
           placeholder={label}

@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Avatar, call, Plate, Stops } from "../components/RideUI";
+import { Avatar, Plate, Stops } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
 import { goBack } from "../lib/nav";
 import { playAlert } from "../lib/alerts";
@@ -114,10 +114,6 @@ export default function Requested() {
 
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", gap: spacing.sm }}>
-          <Pressable onPress={() => call(h.phone)} accessibilityRole="button" style={{ flex: 1, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.md }}>
-            <Ionicons name="call-outline" size={rs(18)} color={colors.text} />
-            <Text style={{ color: colors.text, fontWeight: "800" }}>Call {firstName}</Text>
-          </Pressable>
           <Pressable onPress={withdraw} accessibilityRole="button" style={{ flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: colors.danger, borderRadius: radius.lg, paddingVertical: spacing.md }}>
             <Text style={{ color: colors.danger, fontWeight: "800" }}>Withdraw</Text>
           </Pressable>

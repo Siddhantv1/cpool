@@ -7,11 +7,12 @@ import Button from "../components/Button";
 import Screen from "../components/Screen";
 import TextField from "../components/TextField";
 import { useTheme } from "../constants/theme";
+import { isMobile } from "../lib/api";
 import { displayName, getSession, updateSession } from "../lib/session";
 
 const GENDERS = ["Male", "Female", "Prefer not to say"];
 
-// Photo, name and gender. Email can't change: it is how colleagues know you work at Perficient.
+// Photo, name, mobile number and gender. Email can't change: it is how colleagues know you work at Perficient.
 // shortcut: saved on this phone only; send it to PATCH /v1/me (photo as multipart) when the backend is ready.
 export default function EditProfile() {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
@@ -19,7 +20,9 @@ export default function EditProfile() {
   const [photo, setPhoto] = useState(session?.photo ?? null);
   const [name, setName] = useState(session ? displayName(session) : "");
   const [gender, setGender] = useState(session?.gender ?? null);
+  const [phone, setPhone] = useState(session?.phone?.replace(/^\+91/, "") ?? "");
   const [error, setError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   if (!session) return null;
 
   async function pick(source) {
@@ -44,7 +47,8 @@ export default function EditProfile() {
     const clean = name.trim().replace(/\s+/g, " ");
     if (clean.length < 2) return setError("Enter your name.");
     if (clean.length > 40) return setError("Keep your name under 40 characters.");
-    updateSession({ name: clean, gender, photo });
+    if (!isMobile(phone)) return setPhoneError("Enter your 10-digit mobile number");
+    updateSession({ name: clean, gender, photo, phone: `+91${phone}` });
     router.back();
   }
 
@@ -70,6 +74,12 @@ export default function EditProfile() {
           setName(t);
           setError("");
         }} error={error} autoCapitalize="words" maxLength={40} />
+
+      <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1, marginTop: spacing.sm }}>MOBILE NUMBER</Text>
+      <TextField label="Mobile number" prefix="+91" value={phone} onChangeText={(t) => {
+          setPhone(t.replace(/\D/g, ""));
+          setPhoneError("");
+        }} error={phoneError} keyboardType="number-pad" maxLength={10} autoComplete="tel-national" textContentType="telephoneNumber" />
 
       <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1, marginTop: spacing.sm }}>GENDER</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }} accessibilityRole="radiogroup">
