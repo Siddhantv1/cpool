@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Linking, Pressable, Text, View } from "react-native";
+import { Alert, Linking, Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
 import { Avatar, RequestStatus, RideConfirmed, RoundButton, TripLegs } from "../components/RideUI";
@@ -10,7 +10,7 @@ import { useMeetRoute, useRoute, walkLabel } from "../lib/directions";
 import { useMapControl } from "../lib/mapControl";
 import { OFFICES } from "../lib/mock";
 import { goBack } from "../lib/nav";
-import { ampm, pickupWindow, requestSeat, useOpenRideWhenAccepted } from "../lib/requestSeat";
+import { pickupWindow, requestSeat, ridePrice, useOpenRideWhenAccepted } from "../lib/requestSeat";
 import { km } from "../lib/route";
 import { confirmWithdraw, hostById, myPickup, useTrips } from "../lib/trips";
 import { useArea } from "../lib/useArea";
@@ -196,10 +196,20 @@ export default function PickupMap() {
         ) : (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md }}>
             <View style={{ gap: rs(2) }}>
-              <Text style={{ color: colors.primary }}>
-                <Text style={{ fontSize: rf(24), fontWeight: "800" }}>{h.time}</Text>
-                <Text style={{ fontSize: rf(13), fontWeight: "700" }}> {ampm(h.time)}</Text>
-              </Text>
+              {/* Price the guest pays the host, same as on the ride card; ⓘ explains it. */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: rs(6) }}>
+                <Text style={{ color: colors.primary, fontSize: rf(24), fontWeight: "800" }} accessibilityLabel={`${ridePrice(h)} rupees per seat`}>
+                  ₹{ridePrice(h)}
+                </Text>
+                <Pressable
+                  onPress={() => Alert.alert("About this price", `A share of the fuel for the ${h.ride} you ride together. Pay ${first} in cash or UPI; nothing is paid in the app.`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="About this price"
+                  hitSlop={8}
+                >
+                  <Ionicons name="information-circle-outline" size={rs(19)} color={colors.textMuted} />
+                </Pressable>
+              </View>
               <Text style={{ color: colors.textMuted, fontSize: rf(13.5), fontWeight: "500" }}>
                 {h.seatsFree} seat{h.seatsFree === 1 ? "" : "s"} left
               </Text>

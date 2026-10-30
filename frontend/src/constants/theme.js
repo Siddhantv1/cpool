@@ -36,7 +36,7 @@ export const colors = {
     greenSurface: "#E6F6EE",
     line: "#ECEDEF",
     danger: "#DC2626",
-    route: "#0A0A0A",
+    route: "#1D4ED8", // ride line on every map (Cpool blue)
     // Ride results cards: soft blue border, 3D button edge, purple for a spare helmet
     cardLine: "#D6E2F5",
     primaryEdge: "#1E3A8A",
@@ -74,7 +74,7 @@ export const colors = {
     greenSurface: "#0B2A1E",
     line: "#2A2A2E",
     danger: "#EF4444",
-    route: "#F5F5F7",
+    route: "#60A5FA",
     cardLine: "#1E2B40",
     primaryEdge: "#1E40AF",
     purple: "#A78BFA",
