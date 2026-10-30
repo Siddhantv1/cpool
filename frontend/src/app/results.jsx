@@ -1,7 +1,7 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import WhenSheet from "../components/WhenSheet";
 import { Avatar, RequestStatus, RideConfirmed, TripLegs } from "../components/RideUI";
@@ -9,7 +9,7 @@ import { useTheme } from "../constants/theme";
 import { goBack } from "../lib/nav";
 import { searchRides } from "../lib/api";
 import { OFFICES } from "../lib/mock";
-import { ampm, pickupWindow, requestSeat, useOpenRideWhenAccepted } from "../lib/requestSeat";
+import { pickupWindow, requestSeat, ridePrice, useOpenRideWhenAccepted } from "../lib/requestSeat";
 import { confirmWithdraw, myPickup, useTrips } from "../lib/trips";
 import { useArea } from "../lib/useArea";
 import { defaultWhen, nearbyTimes, whenLabel } from "../lib/when";
@@ -138,10 +138,20 @@ function HostCard({ host, status, onRequest, onMap }) {
         ) : (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md }}>
             <View style={{ gap: rs(2) }}>
-              <Text style={{ color: colors.primary }}>
-                <Text style={{ fontSize: rf(24), fontWeight: "800" }}>{host.time}</Text>
-                <Text style={{ fontSize: rf(13), fontWeight: "700" }}> {ampm(host.time)}</Text>
-              </Text>
+              {/* Price the guest pays the host; ⓘ explains it. */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: rs(6) }}>
+                <Text style={{ color: colors.primary, fontSize: rf(24), fontWeight: "800" }} accessibilityLabel={`${ridePrice(host)} rupees per seat`}>
+                  ₹{ridePrice(host)}
+                </Text>
+                <Pressable
+                  onPress={() => Alert.alert("About this price", `A share of the fuel for the ${host.ride} you ride together. Pay ${first} in cash or UPI; nothing is paid in the app.`)}
+                  accessibilityRole="button"
+                  accessibilityLabel="About this price"
+                  hitSlop={8}
+                >
+                  <Ionicons name="information-circle-outline" size={rs(19)} color={colors.textMuted} />
+                </Pressable>
+              </View>
               <Text style={{ color: colors.textMuted, fontSize: rf(13.5), fontWeight: "500" }}>
                 {host.seatsFree} seat{host.seatsFree === 1 ? "" : "s"} left
               </Text>

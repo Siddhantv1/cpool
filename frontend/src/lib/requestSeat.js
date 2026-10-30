@@ -43,3 +43,12 @@ export function pickupWindow(hhmm) {
   return `${fmt(start)} – ${fmt(start + 10)} ${h < 12 ? "AM" : "PM"}`;
 }
 export const ampm = (hhmm) => (Number(hhmm.split(":")[0]) < 12 ? "AM" : "PM");
+
+// What the guest pays the host (cash or UPI, outside the app): the ride's own price if the backend sends one,
+// else a fuel share of the shared km. shortcut: example rates (car ₹7/km, bike ₹4/km, rounded to ₹5, at least ₹10);
+// replace with the backend's price once rides carry one.
+export function ridePrice(host) {
+  if (host.price) return host.price;
+  const km = parseFloat(host.ride) || 0;
+  return Math.max(10, Math.round((km * (host.type === "bike" ? 4 : 7)) / 5) * 5);
+}

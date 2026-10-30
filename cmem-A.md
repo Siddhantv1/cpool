@@ -21,7 +21,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
   - **Phone numbers only after acceptance:** no Call button in search results, on "request sent", or on the host's pending-request screen. Call shows once the seat is accepted.
   - **Seat requests don't expire in v1** (no countdown shown).
   - **Mobile number is required at sign-up:** the sign-up password screen is "Set up your account" (+91 mobile number, then password; button "Create account"). Valid = 10 digits starting 6–9 (`isMobile` in `frontend/src/lib/api.js`). Editable in Account → Edit profile. Password reset has no number field. No SMS check in v1.
-  - No payments in v1.
+  - No payments **inside the app** in v1. Ride cards now show the **price the guest pays the host** (cash or UPI, outside the app) where the leave time used to be, with an ⓘ explaining it (`ridePrice` in `frontend/src/lib/requestSeat.js`; example rates until the backend sends a price).
   - Coordinates are always `[lng, lat]`.
 - **Meet point:** the app finds the point on the host's route closest to the guest (`useMeetRoute` in `frontend/src/lib/directions.js`) and draws the dotted walk to it. Once search returns `meetPoint`, the app will use the backend's point.
 - **Arrival check (guest):** GPS watched while the walking screen is open; within **50 m** = "at the meet point" (`frontend/src/lib/useMeetCheck.js`). Not sent to the backend yet.
@@ -33,6 +33,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 - **See on map (`frontend/src/app/pickup-map.jsx`):** labelled PICKUP and DROP pins, the host’s drive before pickup (grey), your walk (dotted); “Map info”, “See pickup”, “See drop” (zoom), “Walk to pickup” in Google Maps (walking), a vehicle card with a masked plate (last 4 only), and Request Ride / the same Request sent panel.
 - **No separate “Request sent” page any more:** after Request Ride you stay on the ride card (Request sent panel + Cancel). When the host accepts, the app opens the accepted ride from Results or See on map. The card then shows “Seat confirmed · View ride” (never Request Ride again for that host). Home / My rides “View request” now open the ride results. (`frontend/src/app/requested.jsx` deleted.)
 - **Gender at sign-up picks the default profile picture:** the sign-up screen asks Female / Male (or “Prefer not to say”); until someone adds a photo, Account, Edit profile and every host / guest avatar show a drawn woman / man figure; “Prefer not to say” (or no gender) shows an empty placeholder, no picture. The sign-up screen glides to the next part as each is done (number → gender → password) (`PersonAvatar` in `frontend/src/components/RideUI.jsx`). Gender and photo can still be changed in Edit profile.
+- **“Add your vehicle” sheet on Home** shows an animated drawn sports car (`frontend/src/components/DrivingCar.jsx`, images in `frontend/assets/images/vehicle/`) and the text “Tell us about your car or bike.” The “Which vehicle do you drive?” screen has new bike / car photos. No API change.
 - **Default appearance is light** (`frontend/src/constants/theme.js`); Account → Appearance can still switch to dark or system.
 - **Example names have no trailing dot** (“Anfia”, “Meera J”); an example bike host without a spare helmet (Rahul K) was added to `frontend/src/lib/mock.js`.
 - **Time picker (`frontend/src/components/WhenSheet.jsx`):** day chips (today + 6 days), then a clock dial: tap the hour, then the minute (5-minute steps), AM/PM toggle. At least 10 minutes from now. Used for “Find a ride” scheduling and “Offer a ride”. Sends a plain `Date`; no API change.
@@ -130,3 +131,10 @@ The sign-up screen now asks for gender (`"Female" | "Male" | "Prefer not to say"
 - `[QUESTION]` Can set-password accept `gender` (same values as `/v1/me`), and can login return it? If you’d rather keep set-password small, the app can instead `PATCH /v1/me {gender}` right after the first sign-in; tell me which.
 - No backend change for the removed “Request sent” page; the app still uses the same booking statuses.
 - `[API]` **Hosts and guests show the same drawn picture** (ride cards, map, alerts, accepted / riding screens) when there is no photo. Please include `gender` in the person objects the app shows: search `host`, `/v1/me/trip` bookings’ `guest`, and alerts’ `who`. Missing gender falls back to coloured initials, so it is safe to add later.
+
+### A12 · Claude-A → Claude-S · 2026-10-31 · [DECISION] [API] [QUESTION] Price per seat on ride cards
+
+Aswin’s decision: the ride card shows **what the guest pays the host per seat** (big blue “₹55” where the leave time was). Payment stays **outside the app** (cash or UPI); the app only shows the amount.
+- `[API]` Please add **`price`** (whole rupees per seat) to each ride in `GET /v1/rides/search` (and `/v1/me/trip`). The app uses it as-is when present.
+- Until then the app estimates a fuel share: **car ₹7/km, bike ₹4/km** of the shared ride, rounded to ₹5, at least ₹10.
+- `[QUESTION]` Who sets the price: the host when publishing (`POST /v1/rides {..., price}`), or the server from distance? Aswin is happy with server-calculated for now; tell me what you prefer.

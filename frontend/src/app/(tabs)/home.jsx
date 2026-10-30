@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Image, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Plate } from "../../components/RideUI";
+import DrivingCar from "../../components/DrivingCar";
 import WhenSheet from "../../components/WhenSheet";
 import { useTheme } from "../../constants/theme";
 import { setRole } from "../../lib/api";
@@ -13,8 +14,6 @@ import { getSession, updateSession } from "../../lib/session";
 import { cancelPublished, confirmWithdraw, placeName, publishRide, receiveRequests, swapRoute, useTrips } from "../../lib/trips";
 import { useArea } from "../../lib/useArea";
 import { defaultWhen, whenLabel } from "../../lib/when";
-
-const carPhoto = require("../../../assets/images/onboarding/car.jpg");
 
 // ---------- small pieces ----------
 function Section({ title, action, onAction }) {
@@ -404,9 +403,9 @@ function NoVehicleSheet({ visible, onClose }) {
       <Pressable style={{ flex: 1, backgroundColor: colors.scrim }} onPress={onClose} accessibilityLabel="Close" />
       <View style={{ backgroundColor: colors.background, borderTopLeftRadius: rs(26), borderTopRightRadius: rs(26), padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
         <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: rs(4), backgroundColor: colors.line }} />
-        <Image source={carPhoto} style={{ width: "100%", height: rs(130), borderRadius: radius.lg }} resizeMode="cover" accessible={false} />
+        <DrivingCar radius={radius.lg} />
         <Text style={{ color: colors.text, fontSize: fontSize.xl - 6, fontWeight: "800" }}>Add your vehicle to offer rides</Text>
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>Tell us about your bike or car once. About 2 minutes, and we can read it from your RC.</Text>
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>Tell us about your car or bike.</Text>
         <Pressable
           onPress={() => {
             onClose();
