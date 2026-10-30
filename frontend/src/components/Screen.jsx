@@ -24,7 +24,8 @@ function useKeyboardHeight() {
 // step   = show a progress bar "Step 2 of 3" next to the back arrow
 // title / subtitle = big heading at the top
 // footer = buttons pinned to the bottom, kept above the keyboard
-export default function Screen({ children, back = false, step, steps = 3, title, subtitle, footer }) {
+// scrollRef = ref to the scroll view, for screens that move the next field into view themselves
+export default function Screen({ children, back = false, step, steps = 3, title, subtitle, footer, scrollRef }) {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
@@ -60,6 +61,7 @@ export default function Screen({ children, back = false, step, steps = 3, title,
           </View>
         ) : null}
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={{ flexGrow: 1, padding: spacing.lg, gap: spacing.md }}
           keyboardShouldPersistTaps="handled"
         >

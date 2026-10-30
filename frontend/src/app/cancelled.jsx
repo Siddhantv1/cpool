@@ -55,7 +55,7 @@ export default function Cancelled() {
           <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>OTHER RIDES FOR YOU</Text>
           {others.map((h) => (
             <View key={h.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: spacing.sm + 4 }}>
-              <Avatar initials={h.initials} color={h.color} size={rs(34)} />
+              <Avatar initials={h.initials} gender={h.gender} color={h.color} size={rs(34)} />
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>{h.name}</Text>

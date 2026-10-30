@@ -61,7 +61,7 @@ export default function Riding() {
       <View style={{ flex: 1 }} />
       <MapSheet>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-          <Avatar initials={h.initials} color={h.color} />
+          <Avatar initials={h.initials} gender={h.gender} color={h.color} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }} numberOfLines={1}>With {h.name.split(" ")[0]}</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>{h.vehicle}</Text>

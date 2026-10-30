@@ -31,7 +31,7 @@ function AlertIcon({ alert }) {
   return (
     <View style={{ width: rs(48), height: rs(48) }}>
       {alert.who ? (
-        <Avatar initials={alert.who.initials} color={alert.who.color} size={rs(48)} />
+        <Avatar initials={alert.who.initials} gender={alert.who.gender} color={alert.who.color} size={rs(48)} />
       ) : (
         <View
           style={{

@@ -24,7 +24,7 @@ export default function Accepted() {
         <StatusHeader tone="success" stamp="ACCEPTED" title={`You're riding with ${h.name.split(" ")[0]}`} subtitle={`Tomorrow · pickup ${h.time} AM`} />
         <View style={{ flex: 1, marginTop: -rs(24), backgroundColor: colors.background, borderTopLeftRadius: rs(24), borderTopRightRadius: rs(24), padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.lg }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <Avatar initials={h.initials} color={h.color} size={rs(46)} />
+            <Avatar initials={h.initials} gender={h.gender} color={h.color} size={rs(46)} />
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md + 1 }}>{h.name}</Text>
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{h.vehicle}</Text>

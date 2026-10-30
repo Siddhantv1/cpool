@@ -25,30 +25,32 @@ export const PLACES = [
 
 // Hosts in "Find a ride". start / from = where their drive begins.
 export const HOSTS = [
-  { id: "h1", initials: "AM", color: "#BE185D", name: "Anfia.", phone: "+910000000001", vehicle: "Red Maruti Swift", type: "car", plate: "KA 51 MJ 4410", start: [77.619, 12.9345], from: "Koramangala",
+  { id: "h1", initials: "AM", color: "#BE185D", name: "Anfia", gender: "Female", phone: "+910000000001", vehicle: "Red Maruti Swift", type: "car", plate: "KA 51 MJ 4410", start: [77.619, 12.9345], from: "Koramangala",
     time: "8:35", walkTo: "300 m", ride: "8.1 km", walkFrom: "80 m", seatsFree: 2, seatsTotal: 3, match: "Full match", full: true },
-  { id: "h2", initials: "VS", color: "#1D4ED8", name: "Aswin.", phone: "+910000000002", vehicle: "Royal Enfield Classic 350", type: "bike", plate: "KA 03 KL 7781", start: [77.6387, 12.961], from: "Domlur",
+  { id: "h2", initials: "VS", color: "#1D4ED8", name: "Aswin", gender: "Male", phone: "+910000000002", vehicle: "Royal Enfield Classic 350", type: "bike", plate: "KA 03 KL 7781", start: [77.6387, 12.961], from: "Domlur",
     time: "8:45", walkTo: "150 m", ride: "7.4 km", walkFrom: "0 m", seatsFree: 1, seatsTotal: 1, helmet: true, match: "Full match", full: true },
-  { id: "h3", initials: "MJ", color: "#0F766E", name: "Meera J.", phone: "+910000000000", vehicle: "Grey Tata Nexon", type: "car", plate: "KA 53 MD 2205", start: [77.648, 12.918], from: "HSR Layout",
+  { id: "h4", initials: "RK", color: "#B45309", name: "Rahul K", gender: "Male", phone: "+910000000005", vehicle: "Honda Activa 6G", type: "bike", plate: "KA 05 HX 2290", start: [77.6302, 12.9385], from: "Ejipura",
+    time: "8:50", walkTo: "200 m", ride: "6.8 km", walkFrom: "120 m", seatsFree: 1, seatsTotal: 1, helmet: false, match: "Full match", full: true },
+  { id: "h3", initials: "MJ", color: "#0F766E", name: "Meera J", gender: "Female", phone: "+910000000000", vehicle: "Grey Tata Nexon", type: "car", plate: "KA 53 MD 2205", start: [77.648, 12.918], from: "HSR Layout",
     time: "8:55", walkTo: "750 m", ride: "5.2 km", walkFrom: "350 m", seatsFree: 3, seatsTotal: 4, match: "Partial match · longer walk", full: false },
 ];
 
 // Seat requests that arrive after you publish a ride (as a host). from = where the guest starts walking; coords = their pickup.
 export const REQUESTS = [
-  { id: "r1", initials: "KR", name: "Karthik R.", phone: "+910000000003", rides: 31, pickup: "Silk Board junction", coords: [77.6233, 12.9172], from: [77.6206, 12.9149], pickupTime: "8:32 AM",
+  { id: "r1", initials: "KR", name: "Karthik R", gender: "Male", phone: "+910000000003", rides: 31, pickup: "Silk Board junction", coords: [77.6233, 12.9172], from: [77.6206, 12.9149], pickupTime: "8:32 AM",
     walk: "300 m", drop: "Perficient Bellandur", dropTime: "9:05 AM", together: "8.4 km", detour: "+2 min", seats: 1, expiresIn: "25 min" },
-  { id: "r2", initials: "FS", name: "Fatima S.", phone: "+910000000004", rides: 12, pickup: "HSR BDA Complex", coords: [77.6387, 12.9116], from: [77.6361, 12.913], pickupTime: "8:40 AM",
+  { id: "r2", initials: "FS", name: "Fatima S", gender: "Female", phone: "+910000000004", rides: 12, pickup: "HSR BDA Complex", coords: [77.6387, 12.9116], from: [77.6361, 12.913], pickupTime: "8:40 AM",
     walk: "250 m", drop: "Perficient Bellandur", dropTime: "9:05 AM", together: "6.1 km", detour: "+3 min", seats: 1, expiresIn: "28 min" },
 ];
 
 // Older alerts shown under "Earlier" (minutes ago).
 export const ALERTS = [
-  { id: "a1", kind: "accepted", title: "Ananya accepted your request", text: "Mon 8:35 AM · meet point near Koramangala", minsAgo: 26 * 60, who: { initials: "AM", color: "#BE185D" } },
-  { id: "a2", kind: "request", title: "Karthik asked for a seat", text: "Fri 6:00 PM · pickup at Silk Board junction", minsAgo: 4 * 24 * 60, who: { initials: "KR", color: "#7C3AED" } },
-  { id: "a3", kind: "cancelled", title: "Rohan cancelled Monday's ride", text: "Your other requests stayed open", minsAgo: 5 * 24 * 60, who: { initials: "RP", color: "#0E7490" } },
+  { id: "a1", kind: "accepted", title: "Ananya accepted your request", text: "Mon 8:35 AM · meet point near Koramangala", minsAgo: 26 * 60, who: { initials: "AM", color: "#BE185D", gender: "Female" } },
+  { id: "a2", kind: "request", title: "Karthik asked for a seat", text: "Fri 6:00 PM · pickup at Silk Board junction", minsAgo: 4 * 24 * 60, who: { initials: "KR", color: "#7C3AED", gender: "Male" } },
+  { id: "a3", kind: "cancelled", title: "Rohan cancelled Monday's ride", text: "Your other requests stayed open", minsAgo: 5 * 24 * 60, who: { initials: "RP", color: "#0E7490", gender: "Male" } },
 ];
 
 export const PAST_RIDES = [
-  { id: "p1", when: "Mon 26 Oct · 8:35 AM", from: "Koramangala", to: "Perficient Bellandur", with: "Ananya M.", role: "guest" },
-  { id: "p2", when: "Fri 23 Oct · 6:05 PM", from: "Perficient Bellandur", to: "BTM Layout", with: "Karthik R.", role: "host" },
+  { id: "p1", when: "Mon 26 Oct · 8:35 AM", from: "Koramangala", to: "Perficient Bellandur", with: "Ananya M", role: "guest" },
+  { id: "p2", when: "Fri 23 Oct · 6:05 PM", from: "Perficient Bellandur", to: "BTM Layout", with: "Karthik R", role: "host" },
 ];

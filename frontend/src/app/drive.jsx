@@ -112,7 +112,7 @@ export default function Drive() {
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-              <Avatar initials={passenger.initials} color="#7C3AED" />
+              <Avatar initials={passenger.initials} gender={passenger.gender} color="#7C3AED" />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{passenger.name}</Text>
                 <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{passenger.pickup} · {passenger.pickupTime}</Text>

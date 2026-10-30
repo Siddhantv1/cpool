@@ -4,6 +4,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { PersonAvatar } from "../../components/RideUI";
 import { getAppearance, setAppearance, useTheme } from "../../constants/theme";
 import { setRole } from "../../lib/api";
 import { OFFICES } from "../../lib/mock";
@@ -64,7 +65,6 @@ export default function Account() {
   if (!session) return null;
 
   const name = displayName(session);
-  const initials = name.split(" ").map((w) => w[0]).join("").slice(0, 2);
   const vehicles = session.vehicles ?? (session.vehicle ? [session.vehicle] : []);
   const mode = session.role === "host" ? "host" : "guest";
   const set = (changes) => {
@@ -102,7 +102,7 @@ export default function Account() {
                 {session.photo ? (
                   <Image source={{ uri: session.photo }} style={{ width: rs(66), height: rs(66), borderRadius: rs(33) }} accessibilityLabel="Your profile photo" />
                 ) : (
-                  <Text style={{ color: colors.onPrimary, fontSize: rf(24), fontWeight: "800" }}>{initials.toUpperCase()}</Text>
+                  <PersonAvatar gender={session.gender} size={rs(66)} />
                 )}
                 <Pressable onPress={editProfile} accessibilityRole="button" accessibilityLabel="Change photo" style={{ position: "absolute", right: -2, bottom: -2, width: rs(26), height: rs(26), borderRadius: rs(13), backgroundColor: colors.background, borderWidth: 2, borderColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
                   <Ionicons name="pencil" size={rs(12)} color={colors.text} />

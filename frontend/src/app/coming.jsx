@@ -94,7 +94,7 @@ export default function Coming() {
           ) : null}
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-          <Avatar initials={h.initials} color={h.color} />
+          <Avatar initials={h.initials} gender={h.gender} color={h.color} />
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{h.name}</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{h.vehicle}</Text>

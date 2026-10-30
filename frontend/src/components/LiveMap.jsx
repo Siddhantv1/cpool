@@ -10,8 +10,23 @@ import { boundsOf, lineFeature } from "../lib/route";
 
 // A pin on the map. kind: "start" | "pickup" | "office" | "guest" (a colleague walking to the pickup)
 // | "person" (a colleague's profile badge; focused = the one you're looking at: bigger, ringed, with a pointer)
-function Pin({ kind, label, focused }) {
+// | "tag" (a labelled stop like PICKUP / DROP: a pill above a square icon; tone = background colour)
+function Pin({ kind, label, focused, icon, tone }) {
   const { colors, radius, rs, rf } = useTheme();
+  if (kind === "tag") {
+    const bg = tone ?? colors.primary;
+    return (
+      <View style={{ alignItems: "center" }}>
+        <View style={{ backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: rs(11), paddingVertical: rs(5), elevation: 4 }}>
+          <Text style={{ color: colors.onImage, fontWeight: "800", fontSize: rf(11.5), letterSpacing: 0.5 }}>{label}</Text>
+        </View>
+        <View style={{ width: 0, height: 0, borderLeftWidth: rs(6), borderRightWidth: rs(6), borderTopWidth: rs(6), borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: bg, marginBottom: rs(3) }} />
+        <View style={{ width: rs(38), height: rs(38), borderRadius: rs(12), backgroundColor: bg, borderWidth: 3, borderColor: colors.onImage, alignItems: "center", justifyContent: "center", elevation: 4 }}>
+          <MaterialCommunityIcons name={icon ?? "map-marker"} size={rs(20)} color={colors.onImage} />
+        </View>
+      </View>
+    );
+  }
   if (kind === "person") {
     const d = focused ? rs(46) : rs(30);
     return (
@@ -158,13 +173,13 @@ export default function LiveMap({ route, done, pins = [], vehicle, walks = [], p
         ))}
         {/* Focused pin last so it's drawn on top; its pointer tip sits on the exact spot. */}
         {[...pins.filter((p) => !p.focused), ...pins.filter((p) => p.focused)].map((p) => (
-          <MarkerView key={p.id} coordinate={p.coords} allowOverlap anchor={p.focused ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}>
+          <MarkerView key={p.id} coordinate={p.coords} allowOverlap anchor={p.focused || p.kind === "tag" ? { x: 0.5, y: 1 } : { x: 0.5, y: 0.5 }}>
             {p.onPress ? (
               <Pressable onPress={p.onPress} accessibilityRole="button" accessibilityLabel={p.a11y} hitSlop={8}>
-                <Pin kind={p.kind} label={p.label} focused={p.focused} />
+                <Pin kind={p.kind} label={p.label} focused={p.focused} icon={p.icon} tone={p.tone} />
               </Pressable>
             ) : (
-              <Pin kind={p.kind} label={p.label} focused={p.focused} />
+              <Pin kind={p.kind} label={p.label} focused={p.focused} icon={p.icon} tone={p.tone} />
             )}
           </MarkerView>
         ))}
