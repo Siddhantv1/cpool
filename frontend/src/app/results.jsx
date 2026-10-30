@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import WhenSheet from "../components/WhenSheet";
-import { Avatar, RequestStatus, TripLegs } from "../components/RideUI";
+import { Avatar, RequestStatus, RideConfirmed, TripLegs } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
 import { goBack } from "../lib/nav";
 import { searchRides } from "../lib/api";
@@ -85,7 +85,8 @@ function FilterSheet({ value, onDone, onClose }) {
   );
 }
 
-function HostCard({ host, pending, onRequest, onMap }) {
+// status: this host's answer to your booking ("requested" | "accepted"), else null.
+function HostCard({ host, status, onRequest, onMap }) {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const first = host.name.split(" ")[0];
   const bike = host.type === "bike";
@@ -130,7 +131,9 @@ function HostCard({ host, pending, onRequest, onMap }) {
       </View>
 
       <View style={{ padding: spacing.md }}>
-        {pending ? (
+        {status === "accepted" ? (
+          <RideConfirmed name={first} onOpen={() => router.push("/accepted")} />
+        ) : status === "requested" ? (
           <RequestStatus name={first} onCancel={() => confirmWithdraw()} />
         ) : (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md }}>
@@ -202,7 +205,7 @@ export default function Results() {
   const toLabel = side === "to" ? OFFICES[office].name : to;
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [filtering, setFiltering] = useState(false);
-  const pending = booking?.status === "requested" ? booking.host.id : null;
+  const statusFor = (id) => (booking?.host.id === id && ["requested", "accepted"].includes(booking.status) ? booking.status : null);
   useEffect(() => {
     let alive = true;
     searchRides(officeId)
@@ -302,7 +305,7 @@ export default function Results() {
           </View>
         ) : null}
 
-        {hosts === null ? <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.text} /> : shown.map((h) => <HostCard key={h.id} host={h} pending={pending === h.id} onRequest={() => request(h.id)} onMap={() => openMap(h.id)} />)}
+        {hosts === null ? <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.text} /> : shown.map((h) => <HostCard key={h.id} host={h} status={statusFor(h.id)} onRequest={() => request(h.id)} onMap={() => openMap(h.id)} />)}
 
         {hosts && !hosts.length ? (
           <View style={{ alignItems: "center", gap: spacing.md, marginTop: spacing.xl * 2, paddingHorizontal: spacing.md }}>

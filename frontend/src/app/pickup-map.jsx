@@ -1,10 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Redirect, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
-import { Avatar, RequestStatus, RoundButton, TripLegs } from "../components/RideUI";
+import { Avatar, RequestStatus, RideConfirmed, RoundButton, TripLegs } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
 import { useMeetRoute, useRoute, walkLabel } from "../lib/directions";
 import { useMapControl } from "../lib/mapControl";
@@ -56,7 +56,7 @@ export default function PickupMap() {
   if (!h) return <Redirect href="/home" />;
 
   const first = h.name.split(" ")[0];
-  const pending = booking?.status === "requested" && booking.host.id === h.id;
+  const status = booking?.host.id === h.id ? booking.status : null;
   const pins = [
     { id: "me", kind: "start", coords: me.coords },
     ...(meet ? [{ id: "pickup", kind: "tag", label: "PICKUP", icon: "car-door", tone: colors.primary, coords: meet }] : []),
@@ -167,7 +167,7 @@ export default function PickupMap() {
             style={({ pressed }) => ({ height: rs(44), flexDirection: "row", alignItems: "center", justifyContent: "center", gap: spacing.sm, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.line, backgroundColor: pressed ? colors.primarySurface : colors.background })}
           >
             <MaterialCommunityIcons name="walk" size={rs(18)} color={colors.primary} />
-            <Text style={{ color: colors.text, fontWeight: "700", fontSize: rf(14) }}>Walk to pickup · {walkLabel(walk.km)} in Google Maps</Text>
+            <Text style={{ color: colors.text, fontWeight: "700", fontSize: rf(14) }}>Walk to pickup</Text>
             <Ionicons name="open-outline" size={rs(15)} color={colors.primary} />
           </Pressable>
         ) : plan && !needsWalk ? (
@@ -189,7 +189,9 @@ export default function PickupMap() {
           </View>
         </View>
 
-        {pending ? (
+        {status === "accepted" ? (
+          <RideConfirmed name={first} onOpen={() => router.push("/accepted")} />
+        ) : status === "requested" ? (
           <RequestStatus name={first} onCancel={() => confirmWithdraw()} />
         ) : (
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: spacing.md }}>

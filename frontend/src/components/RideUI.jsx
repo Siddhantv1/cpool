@@ -267,3 +267,22 @@ export function PersonAvatar({ gender, size = 40 }) {
     </View>
   );
 }
+
+// Shown on the ride card after the host accepts (instead of Request Ride), with a way to open the ride.
+export function RideConfirmed({ name, onOpen }) {
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
+  return (
+    <View accessibilityRole="summary" accessibilityLabel={`Seat confirmed with ${name}`} style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 4, borderWidth: 1, borderColor: colors.green + "55", backgroundColor: colors.greenSurface, borderRadius: radius.lg + 2, padding: spacing.md - 2 }}>
+      <View style={{ width: rs(40), height: rs(40), borderRadius: rs(20), backgroundColor: colors.green, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name="checkmark" size={rs(22)} color={colors.onGreen} />
+      </View>
+      <View style={{ flex: 1, gap: rs(2) }}>
+        <Text style={{ color: colors.text, fontWeight: "700", fontSize: rf(15.5) }}>Seat confirmed</Text>
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{name} accepted your request</Text>
+      </View>
+      <Pressable onPress={onOpen} accessibilityRole="button" hitSlop={6} style={({ pressed }) => ({ paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: pressed ? colors.green + "22" : "transparent" })}>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: rf(14) }}>View ride</Text>
+      </Pressable>
+    </View>
+  );
+}
