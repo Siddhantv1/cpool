@@ -391,3 +391,79 @@ class RideTests(APITestCase):
         self.assertEqual(err["code"], "guest_in_car")
         b = Booking.objects.get(pk=booking["id"])
         self.assertEqual((b.status, b.flagged), ("accepted", True))  # refused and flagged for the admin
+
+    # ---------- code-review fixes ----------
+
+    def finished_ride(self):
+        ride, booking = self.accepted_booking()
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/picked-up")
+        self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/in-car")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/complete")
+        return ride, booking
+
+    def test_book_again_after_a_finished_ride(self):  # B1
+        self.finished_ride()
+        other = self.offer(user=self.make_user("second.host@perficient.com", seats=2))
+        self.request_seat(self.guest, other["id"])  # was: 409 already_on_trip for ever
+        self.call(self.host, "post", "/v1/rides", self.ride_body(), 201)  # and the host can offer again
+
+    def test_finished_ride_does_not_block_account_deletion(self):  # B1
+        self.finished_ride()
+        self.call(self.guest, "post", "/v1/me/delete", {"password": PASSWORD})
+
+    def test_host_cancels_after_pick_up(self):  # B3
+        ride, booking = self.accepted_booking()
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/picked-up")
+        self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/in-car")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/cancel", {"reason": "Flat tyre"})
+        mine = self.call(self.guest, "get", "/v1/me/trip")["booking"]
+        self.assertEqual((mine["status"], mine["reason"]), ("cancelled", "Flat tyre"))
+        self.assertEqual(self.alerts(self.guest)[0]["kind"], "cancelled")
+
+    def test_unanswered_request_declined_when_the_ride_leaves(self):  # use case: guest stuck waiting
+        ride = self.offer()
+        booking = self.request_seat(self.guest, ride["id"])
+        Ride.objects.filter(pk=ride["id"]).update(depart_at=timezone.now() - timedelta(minutes=1))
+        mine = self.call(self.guest, "get", "/v1/me/trip")["booking"]
+        self.assertEqual((mine["id"], mine["status"]), (booking["id"], "declined"))
+        self.assertEqual(self.alerts(self.guest)[0]["title"], "Host didn’t answer in time")
+        other = self.offer(user=self.make_user("next.host@perficient.com", seats=2))
+        self.request_seat(self.guest, other["id"])  # free to ask someone else
+
+    def test_ride_never_completed_in_the_app_is_closed(self):  # B2
+        ride, booking = self.accepted_booking()
+        Ride.objects.filter(pk=ride["id"]).update(depart_at=timezone.now() - timedelta(hours=7))
+        self.assertIsNone(self.call(self.host, "get", "/v1/me/trip")["ride"])  # closed on the next request
+        self.assertEqual(Ride.objects.get(pk=ride["id"]).status, "cancelled")
+        self.assertEqual(Booking.objects.get(pk=booking["id"]).status, "cancelled")
+        self.call(self.host, "post", "/v1/rides", self.ride_body(), 201)  # host can offer again
+
+        late = self.make_user("late.host@perficient.com", seats=2)
+        started = self.offer(user=late)
+        b2 = self.request_seat(self.guest2, started["id"])
+        self.call(late, "post", f"/v1/bookings/{b2['id']}/accept")
+        self.call(late, "post", f"/v1/rides/{started['id']}/start")
+        self.call(self.guest2, "post", f"/v1/bookings/{b2['id']}/in-car")
+        Ride.objects.filter(pk=started["id"]).update(depart_at=timezone.now() - timedelta(hours=7))
+        self.call(self.guest2, "get", "/v1/me/trip")
+        self.assertEqual((Ride.objects.get(pk=started["id"]).status, Booking.objects.get(pk=b2["id"]).status), ("completed", "picked_up"))
+
+    def test_decline_shown_even_for_an_early_request(self):  # B4
+        ride = self.offer(departAt=(timezone.now() + timedelta(days=5)).isoformat())
+        booking = self.request_seat(self.guest, ride["id"])
+        Booking.objects.filter(pk=booking["id"]).update(created=timezone.now() - timedelta(days=3))
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/reject")
+        self.assertEqual(self.call(self.guest, "get", "/v1/me/trip")["booking"]["status"], "declined")
+
+    def test_readable_message_for_nested_errors(self):  # B5
+        err = self.call(self.host, "post", "/v1/rides", self.ride_body(**{"from": {}}), 400)
+        self.assertEqual(err["message"], "Give an officeId, or a name and coords.")
+        err = self.call(self.host, "post", "/v1/rides", self.ride_body(route=[[77.6, 12.9], [999, 12.9]]), 400)
+        self.assertNotIn("{", err["message"])
+
+    def test_meet_point_must_be_near_the_route(self):  # V5
+        ride = self.offer()
+        err = self.call(self.guest, "post", f"/v1/rides/{ride['id']}/bookings", {"meetPoint": [77.5, 13.1], "meetName": "Far away"}, 400)
+        self.assertEqual(err["code"], "meet_point_too_far")

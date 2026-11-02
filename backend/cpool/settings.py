@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import os
+import secrets
 import sys
 from pathlib import Path
 
@@ -22,12 +23,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-only-insecure-key')
+# Debug is on only for local `manage.py` commands (runserver, test, migrate…). A hosted server started any other way
+# (gunicorn, waitress…) runs with debug off unless DJANGO_DEBUG=1 is set on purpose.
+RUNNING_LOCALLY = Path(sys.argv[0]).name == "manage.py"
+DEBUG = os.environ.get('DJANGO_DEBUG', '1' if RUNNING_LOCALLY else '0') == '1'
+
+# Never a key from the repo (anyone could forge sign-in links with it). Production must set DJANGO_SECRET_KEY;
+# locally a random key is made once per machine in backend/.secret_key (git-ignored).
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise RuntimeError('Set DJANGO_SECRET_KEY to run with debug off (production)')
+    key_file = BASE_DIR / '.secret_key'
+    if not key_file.exists():
+        key_file.write_text(secrets.token_urlsafe(50))
+    SECRET_KEY = key_file.read_text().strip()
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
-if not DEBUG and SECRET_KEY == 'dev-only-insecure-key':
-    raise RuntimeError('Set DJANGO_SECRET_KEY when DJANGO_DEBUG=0')
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1,10.0.2.2').split(',')
 
@@ -136,8 +148,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
     'EXCEPTION_HANDLER': 'api.views.error_handler',
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    # Limits code emails and password guessing per phone/IP.
-    'DEFAULT_THROTTLE_RATES': {'auth': '20/hour'},
+    # Sign-in routes: 20 an hour per work email, 300 an hour per internet address (a whole office shares one).
+    'DEFAULT_THROTTLE_RATES': {'auth_email': '20/hour', 'auth_ip': '300/hour'},
 }
 SPECTACULAR_SETTINGS = {'TITLE': 'Cpool API', 'VERSION': '1'}
 

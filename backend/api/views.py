@@ -13,6 +13,7 @@ from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
+from django.utils.crypto import salted_hmac
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers
 from rest_framework.authtoken.models import Token
@@ -20,7 +21,7 @@ from rest_framework.decorators import api_view, authentication_classes, permissi
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import AnonRateThrottle
+from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 from rest_framework.views import exception_handler
 
 from .models import ACTIVE_BOOKING, ACTIVE_RIDE, Booking, EmailCode, Location, Ride, User, Vehicle
@@ -42,6 +43,13 @@ class ApiError(APIException):
         self.status_code = status
 
 
+def first_message(value):
+    """The first readable message inside DRF's nested error lists and dicts (e.g. errors inside "from" or a route point)."""
+    while isinstance(value, (list, dict)) and value:
+        value = next(iter(value.values())) if isinstance(value, dict) else value[0]
+    return str(value)
+
+
 def error_handler(exc, context):
     """Every error is {code, message}; validation errors add fields: {name: message}."""
     response = exception_handler(exc, context)
@@ -49,7 +57,7 @@ def error_handler(exc, context):
         return None
     if isinstance(exc, ValidationError):
         data = response.data if isinstance(response.data, dict) else {"detail": response.data}
-        fields = {k: str(v[0] if isinstance(v, list) else v) for k, v in data.items()}
+        fields = {k: first_message(v) for k, v in data.items()}
         response.data = {"code": "invalid", "message": next(iter(fields.values()), "Check the details."), "fields": fields}
     else:
         code = exc.get_codes() if isinstance(exc, APIException) else "not_found"
@@ -90,8 +98,23 @@ def send_code(email, purpose):
     send_mail("Your Cpool code", f"Your Cpool code is {code}. It expires in {CODE_MINUTES} minutes.", None, [email])
 
 
-class AuthThrottle(AnonRateThrottle):
-    scope = "auth"  # rate in settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], per IP
+class AuthEmailThrottle(SimpleRateThrottle):
+    """Limits guessing per work email (rate in settings: "auth_email")."""
+    scope = "auth_email"
+
+    def get_cache_key(self, request, view):
+        email = str(request.data.get("email") or "").strip().lower()
+        return self.cache_format % {"scope": self.scope, "ident": email} if email else None
+
+
+class AuthIpThrottle(AnonRateThrottle):
+    """A generous per-address limit: a whole office reaches the server from one shared internet address ("auth_ip")."""
+    scope = "auth_ip"
+
+
+def password_stamp(user):
+    """Changes whenever the password changes, so a password-reset link works only once."""
+    return salted_hmac("cpool-reset-link", user.password).hexdigest()[:16]
 
 
 def body(name, fields):
@@ -106,7 +129,7 @@ def auth_view(request_fields, response=OK):
     """Public auth route: no token needed, rate-limited, request body documented in Swagger."""
     def wrap(fn):
         # No authentication at all: a stale token left on the phone must not block signing in again.
-        view = api_view(["POST"])(authentication_classes([])(permission_classes([AllowAny])(throttle_classes([AuthThrottle])(fn))))
+        view = api_view(["POST"])(authentication_classes([])(permission_classes([AllowAny])(throttle_classes([AuthEmailThrottle, AuthIpThrottle])(fn))))
         return extend_schema(request=body(fn.__name__ + "_body", request_fields), responses=response)(view)
     return wrap
 
@@ -149,7 +172,10 @@ def verify(request):
         EmailCode.objects.filter(pk=row.pk).update(tries=F("tries") + 1)
         raise ApiError("wrong_code", "That code is wrong. Check your email and try again.")
     row.delete()
-    return Response({"token": signing.dumps({"email": email, "purpose": purpose}, salt="set-password")})
+    payload = {"email": email, "purpose": purpose}
+    if purpose == "reset":
+        payload["pw"] = password_stamp(User.objects.get(username=email))  # reset codes are only sent to existing accounts
+    return Response({"token": signing.dumps(payload, salt="set-password")})
 
 
 @auth_view({"token": serializers.CharField(), "password": serializers.CharField(),
@@ -181,7 +207,7 @@ def set_password(request):
         User.objects.create_user(username=email, email=email, password=password, phone=phone, gender=gender)
     else:
         user = User.objects.filter(username=email).first()
-        if not user:
+        if not user or data.get("pw") != password_stamp(user):  # already used: the password has changed since
             raise ApiError("token_expired", "This link has expired. Please start again.")
         check_password_rules(password, user)
         user.set_password(password)
@@ -380,7 +406,10 @@ def delete_account(request):
     user = request.user
     if not user.check_password(request.data.get("password", "")):
         raise ApiError("wrong_password", "Your password is incorrect.")
-    if Ride.objects.filter(host=user, status__in=ACTIVE_RIDE).exists() or Booking.objects.filter(guest=user, status__in=ACTIVE_BOOKING).exists():
+    from .rides import active_bookings, tidy  # imported here: rides.py imports this module
+
+    tidy()
+    if Ride.objects.filter(host=user, status__in=ACTIVE_RIDE).exists() or active_bookings(user).exists():
         raise ApiError("already_on_trip", "Finish or cancel your current trip first.", 409)
     with transaction.atomic():
         EmailCode.objects.filter(email=user.email).delete()

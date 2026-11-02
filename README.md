@@ -34,6 +34,7 @@ Every ride starts or ends at a Perficient office (Bellandur or Whitefield), by c
   - a seat can't be given twice
   - a vehicle (number plate) can be on only one account at a time
   - a guest counts as picked up when both the host ("Picked up") and the guest ("I'm in the car") have confirmed; neither has to wait for the other
+  - nobody stays stuck "on a trip": seat requests still unanswered when the ride leaves are declined, and rides never completed in the app are closed 6 hours after departure
   - only the host answers requests
   - phone numbers are shared only after a seat is accepted
   - guests never see where the host's drive starts
@@ -123,8 +124,8 @@ If port 8000 is taken, use another one: `python manage.py runserver 8001`.
 ### Settings (environment variables)
 | Variable | Use |
 |---|---|
-| `DJANGO_DEBUG` | `0` in production (default `1`) |
-| `DJANGO_SECRET_KEY` | required when `DJANGO_DEBUG=0` |
+| `DJANGO_DEBUG` | debug is on for local `manage.py` commands and off for a hosted server (gunicorn, waitress…), unless you set this to `1` or `0` |
+| `DJANGO_SECRET_KEY` | **required in production**. Locally, a random key is made once in `backend/.secret_key` (git-ignored) |
 | `DJANGO_ALLOWED_HOSTS` | comma-separated host names (default: localhost) |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM` | send sign-in codes by SMTP instead of printing them |
 | `SOS_EMAIL` | the security desk's address for SOS alerts |
@@ -170,6 +171,7 @@ The contract between the app and the backend. **If a route or shape changes, upd
 
 - **Login token:** every route except sign-up/login needs `Authorization: Bearer <token>`.
 - **Errors:** HTTP 4xx with `{code, message}`; invalid input also has `fields: {name: message}`.
+- **Sign-in routes are rate-limited:** 20 requests an hour per email, and 300 an hour per internet address (a whole office shares one). Over that: `429` with code `throttled`.
 - **Coordinates** are `[lng, lat]`. **Times** are ISO 8601 with a timezone.
 - **A person shown to someone else** (hosts in search, guests on a request, the person on an alert): `{name, initials, gender, phone}`. `gender` is `"Female"` or `"Male"`, or null for "Prefer not to say"; the app uses it for the default avatar. `phone` is null until the seat is accepted.
 - **A host shown to a guest** also has `{vehicle, type, colour, plate, plateLast4, helmet}`. `plate` is null until the seat is accepted (`plateLast4` is always there). `helmet` is `true` (spare helmet) or `false` (bring your own) for bikes, and null for cars.
@@ -180,7 +182,7 @@ The contract between the app and the backend. **If a route or shape changes, upd
 |---|---|---|
 | POST | `/v1/auth/signup` | `{email}` → `{ok}`: sends a code. Errors: `not_work_email`, `already_registered` |
 | POST | `/v1/auth/forgot` | `{email}` → `{ok}`: sends a code (same answer whether or not the account exists) |
-| POST | `/v1/auth/verify` | `{email, code, purpose: "signup" \| "reset"}` → `{token}` (valid 15 min). Errors: `wrong_code`, `code_expired` (codes last 10 min), `too_many_tries` (5) |
+| POST | `/v1/auth/verify` | `{email, code, purpose: "signup" \| "reset"}` → `{token}` (valid 15 min; a password-reset token works only once). Errors: `wrong_code`, `code_expired` (codes last 10 min), `too_many_tries` (5) |
 | POST | `/v1/auth/set-password` | `{token, password, phone, gender}` → `{ok}`. A sign-up token creates the account and **needs `phone`** (an Indian mobile, 10 digits starting 6–9, `+91` optional, stored as `+91XXXXXXXXXX`) **and `gender`** (`"Female"`, `"Male"` or `"Prefer not to say"`). A reset token ignores both and signs out every phone. Errors: `token_expired`, `phone_required`, `invalid_phone`, `gender_required`, `invalid_gender`, `weak_password`, `already_registered` |
 | POST | `/v1/auth/login` | `{email, password}` → `{token, role, vehicle, phone, gender}`. `role` is null on the first sign-in, which leads to first-time setup. Errors: `not_registered`, `wrong_password`, `account_disabled` |
 | POST | `/v1/auth/logout` | → `{ok}`: the token stops working |
@@ -224,7 +226,7 @@ The contract between the app and the backend. **If a route or shape changes, upd
 ### Bookings
 | Method | Path | Request → response |
 |---|---|---|
-| POST | `/v1/rides/{id}/bookings` | guest: `{meetPoint: [lng, lat], meetName}` → your booking. Errors: `own_ride`, `ride_closed`, `ride_full`, `already_on_trip` |
+| POST | `/v1/rides/{id}/bookings` | guest: `{meetPoint: [lng, lat], meetName}` → your booking. The meet point must be within 1.5 km of the host's route. Errors: `own_ride`, `ride_closed`, `ride_full`, `meet_point_too_far`, `already_on_trip` |
 | POST | `/v1/bookings/{id}/accept` | host: takes a seat. Error: `ride_full` when none are left |
 | POST | `/v1/bookings/{id}/reject` | host: declines the request |
 | POST | `/v1/bookings/{id}/cancel` | guest: `{reason?}` withdraws a request, or frees a confirmed seat |
