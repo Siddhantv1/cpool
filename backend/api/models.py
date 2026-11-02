@@ -4,6 +4,7 @@ import hmac
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
 
 class User(AbstractUser):
@@ -70,7 +71,8 @@ OFFICES = {
     "whitefield": {"name": "Perficient Whitefield", "coords": [77.73, 12.985]},
 }
 
-# A guest's booking counts as their current trip while in one of these states (one at a time).
+# A guest's booking ties them up while in one of these states AND its ride is still open or started
+# (a "picked_up" booking on a completed ride is history, not a current trip).
 ACTIVE_BOOKING = ["requested", "accepted", "picked_up"]
 ACTIVE_RIDE = ["open", "started"]
 
@@ -115,11 +117,13 @@ class Booking(models.Model):
     guest_confirmed_at = models.DateTimeField(null=True, blank=True)
     flagged = models.BooleanField(default=False)  # host tried "No-show" after the guest said they were in the car: admin to check
     created = models.DateTimeField(auto_now_add=True)
+    status_changed = models.DateTimeField(default=timezone.now)  # when the status last changed (e.g. when it was declined)
 
     class Meta:
         ordering = ["created"]
-        # Backs up the "one trip at a time" rule even if two requests arrive at the same moment.
-        constraints = [models.UniqueConstraint(fields=["guest"], condition=models.Q(status__in=ACTIVE_BOOKING), name="one_active_booking_per_guest")]
+        # Backs up "one seat request at a time" even if two requests arrive at the same moment. (Only requested/accepted:
+        # "picked_up" stays on finished rides as history, so it can't be part of a database-level rule.)
+        constraints = [models.UniqueConstraint(fields=["guest"], condition=models.Q(status__in=["requested", "accepted"]), name="one_active_booking_per_guest")]
 
     def __str__(self):
         return f"{self.guest.username} on ride {self.ride_id} · {self.status}"

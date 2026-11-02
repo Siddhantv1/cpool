@@ -140,3 +140,22 @@ class AuthFlowTests(APITestCase):
         res = self.client.patch("/v1/me", {"phone": "hello"}, format="json")
         self.assertEqual((res.status_code, list(res.data["fields"])), (400, ["phone"]))
         self.assertEqual(self.client.patch("/v1/me", {"phone": "+91 70000 00001"}, format="json").data["phone"], "+917000000001")
+
+    def test_reset_link_works_once(self):  # V2
+        self.register()
+        self.post("/v1/auth/forgot", {"email": EMAIL})
+        token = self.post("/v1/auth/verify", {"email": EMAIL, "code": self.last_code(), "purpose": "reset"})["token"]
+        self.post("/v1/auth/set-password", {"token": token, "password": "NewPass99"})
+        again = self.post("/v1/auth/set-password", {"token": token, "password": "Stolen123"}, 400)
+        self.assertEqual(again["code"], "token_expired")
+        self.sign_in(password="NewPass99")
+
+    def test_rate_limit_is_per_email(self):  # V4: one office shares one internet address
+        self.register()
+        for _ in range(19):  # register() already used 1 of this email's 20 an hour (sign-up)… plus verify/set-password
+            res = self.client.post("/v1/auth/login", {"email": EMAIL, "password": "wrong-guess1"}, format="json")
+            if res.status_code == 429:
+                break
+        self.assertEqual(res.data["code"], "throttled")
+        other = self.client.post("/v1/auth/login", {"email": "colleague@perficient.com", "password": "x"}, format="json")
+        self.assertEqual(other.data["code"], "not_registered")  # a colleague on the same network isn't locked out

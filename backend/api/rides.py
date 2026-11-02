@@ -9,7 +9,7 @@ from datetime import timedelta
 
 from django.core.mail import send_mail
 from django.db import IntegrityError, transaction
-from django.db.models import F, Prefetch
+from django.db.models import Count, F, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.types import OpenApiTypes
@@ -26,6 +26,7 @@ MAX_WALK_KM = 1.5  # rides whose route passes farther than this from you aren't 
 FULL_MATCH_KM = 0.5  # walks up to this are a "full" match, longer ones "partial"
 WINDOW = timedelta(minutes=30)  # search shows rides leaving within ± this of your time
 MIN_NOTICE, MAX_AHEAD = timedelta(minutes=10), timedelta(days=7)  # same limits as the app's time picker
+STALE_AFTER = timedelta(hours=6)  # a ride nobody completed in the app is closed this long after departure
 SEES_PHONE = ["accepted", "picked_up"]  # phone numbers and full number plates are shared only once a seat is confirmed
 # What a guest pays the host per seat, outside the app (cash / UPI): a fuel share of the distance they ride together.
 # ponytail: flat rates in code; move to an admin-editable rate table (fuel type × vehicle size) when someone asks to change them.
@@ -146,10 +147,6 @@ def host_info(ride, phone=False):
     }
 
 
-def price_for(ride, meet):
-    return seat_price(ride.vehicle.type, geo.length_km(shared_part(ride, meet)[3]))
-
-
 def shared_part(ride, point):
     """The bit of the host's route a guest rides on: meet point → office, or office → drop point.
     The host's own start (often their home) is never sent to guests."""
@@ -161,6 +158,7 @@ def shared_part(ride, point):
 
 def guest_view(booking):
     ride = booking.ride
+    route = shared_part(ride, booking.meet)[3]
     return {
         "id": booking.id,
         "status": booking.status,
@@ -178,14 +176,30 @@ def guest_view(booking):
             "departAt": ride.depart_at,
             "status": ride.status,
             "host": host_info(ride, phone=booking.status in SEES_PHONE),
-            "route": shared_part(ride, booking.meet)[3],
-            "price": price_for(ride, booking.meet),
+            "route": route,
+            "price": seat_price(ride.vehicle.type, geo.length_km(route)),
         },
     }
 
 
 def host_view(ride):
-    bookings = ride.bookings.filter(status__in=[*ACTIVE_BOOKING, "no_show"]).select_related("guest")
+    bookings = (ride.bookings.filter(status__in=[*ACTIVE_BOOKING, "no_show"]).select_related("guest")
+                .annotate(guest_rides=Count("guest__bookings", filter=Q(guest__bookings__status="picked_up"))))
+    rows = []
+    for b in bookings:
+        _, _, along, route = shared_part(ride, b.meet)
+        rows.append({
+            "id": b.id,
+            "status": b.status,
+            "hostConfirmed": b.host_confirmed_at is not None,
+            "guestConfirmed": b.guest_confirmed_at is not None,
+            "meetPoint": b.meet,
+            "meetName": b.meet_name,
+            "alongKm": round(along, 2),  # how far along your route this guest is: sort by it to drive pickups in order
+            "price": seat_price(ride.vehicle.type, geo.length_km(route)),
+            "createdAt": b.created,
+            "guest": {**person(b.guest, phone=b.status in SEES_PHONE), "rides": b.guest_rides},
+        })
     return {
         "id": ride.id,
         "from": ride.start,
@@ -198,34 +212,50 @@ def host_view(ride):
         "status": ride.status,
         "vehicle": VehicleSerializer(ride.vehicle).data,
         "route": ride.route,
-        "bookings": [{
-            "id": b.id,
-            "status": b.status,
-            "hostConfirmed": b.host_confirmed_at is not None,
-            "guestConfirmed": b.guest_confirmed_at is not None,
-            "meetPoint": b.meet,
-            "meetName": b.meet_name,
-            "alongKm": round(geo.nearest(ride.route, b.meet)[2], 2),  # how far along your route this guest is: sort by it to drive pickups in order
-            "price": price_for(ride, b.meet),
-            "createdAt": b.created,
-            "guest": {**person(b.guest, phone=b.status in SEES_PHONE), "rides": b.guest.bookings.filter(status="picked_up").count()},
-        } for b in bookings],
+        "bookings": rows,
     }
 
 
 # ---------- rules ----------
 
+def active_bookings(user):
+    """Your seat requests and bookings that still tie you up: on a ride that is open or under way."""
+    return Booking.objects.filter(guest=user, status__in=ACTIVE_BOOKING, ride__status__in=ACTIVE_RIDE)
+
+
+def tidy():
+    """Close what real life left open, so nobody stays stuck "on a trip" for ever:
+    - seat requests still unanswered when the ride leaves are declined (the guest is told);
+    - rides never completed in the app are closed STALE_AFTER their departure time.
+    ponytail: runs at the start of the main routes (cheap at our size); make it a scheduled job once the backend is hosted."""
+    now = timezone.now()
+    for b in Booking.objects.filter(status="requested", ride__depart_at__lte=now).select_related("ride__host", "guest"):
+        if Booking.objects.filter(pk=b.pk, status="requested").update(status="declined", reason="The ride left before the host answered", status_changed=now):
+            notify(b.guest, "declined", f"{first_name(b.ride.host)} didn’t answer in time", "The ride has left. Try another ride.", b.ride.host, b)
+    for ride in Ride.objects.filter(status__in=ACTIVE_RIDE, depart_at__lte=now - STALE_AFTER):
+        with transaction.atomic():
+            if ride.status == "started":
+                try:
+                    finish(ride)  # same rules as tapping Complete
+                except ApiError:  # the host completed it a moment ago
+                    pass
+            elif Ride.objects.filter(pk=ride.pk, status="open").update(status="cancelled"):
+                ride.bookings.filter(status="accepted").update(status="cancelled", reason="The ride was never started in the app", status_changed=now)
+
+
 def check_free(user):
     """One trip at a time: you can't host and ride together, or hold two seat requests."""
+    tidy()
     if Ride.objects.filter(host=user, status__in=ACTIVE_RIDE).exists():
         raise ApiError("already_on_trip", "You’re hosting a ride. Finish or cancel it first.", 409)
-    if Booking.objects.filter(guest=user, status__in=ACTIVE_BOOKING).exists():
+    if active_bookings(user).exists():
         raise ApiError("already_on_trip", "You already have a seat requested or booked. Cancel it first.", 409)
 
 
 def move(qs, to_status, from_statuses, message):
     """Change status only if it is still in an expected state (safe if two phones act at once)."""
-    if qs.filter(status__in=from_statuses).update(status=to_status) != 1:
+    stamp = {"status_changed": timezone.now()} if qs.model is Booking else {}
+    if qs.filter(status__in=from_statuses).update(status=to_status, **stamp) != 1:
         raise ApiError("not_allowed_now", message, 409)
 
 
@@ -263,6 +293,7 @@ def offer(request):
 @extend_schema(parameters=[SearchIn], responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 def search(request):
+    tidy()
     q = valid(SearchIn, request.query_params)
     here = [q["lng"], q["lat"]]
     office = OFFICES[q["officeId"]]["coords"]
@@ -316,14 +347,20 @@ def start_ride(request, ride_id):
 def complete_ride(request, ride_id):
     ride = my_ride(request, ride_id)
     with transaction.atomic():
-        move(Ride.objects.filter(pk=ride.pk), "completed", ["started"], "Start the ride before completing it.")
-        ride.bookings.filter(status="requested").update(status="declined", reason="The ride has ended")
-        # Only one of them confirmed: still counts as picked up (the booking keeps showing who confirmed, for the admin).
-        on_board = ride.bookings.filter(status="accepted").exclude(host_confirmed_at=None, guest_confirmed_at=None)
-        on_board.update(status="picked_up")
-        ride.bookings.filter(status="accepted").update(status="no_show")  # neither confirmed
+        finish(ride)
     ride.refresh_from_db()
     return Response(host_view(ride))
+
+
+def finish(ride):
+    """Complete a started ride: unanswered requests are declined, a seat one side confirmed counts as picked up,
+    a seat nobody confirmed is a no-show."""
+    now = timezone.now()
+    move(Ride.objects.filter(pk=ride.pk), "completed", ["started"], "Start the ride before completing it.")
+    ride.bookings.filter(status="requested").update(status="declined", reason="The ride has ended", status_changed=now)
+    # Only one of them confirmed: still counts as picked up (the booking keeps showing who confirmed, for the admin).
+    ride.bookings.filter(status="accepted").exclude(host_confirmed_at=None, guest_confirmed_at=None).update(status="picked_up", status_changed=now)
+    ride.bookings.filter(status="accepted").update(status="no_show", status_changed=now)  # neither confirmed
 
 
 @extend_schema(request=body("RideCancelIn", {"reason": serializers.CharField(required=False)}), responses=OpenApiTypes.OBJECT)
@@ -333,8 +370,8 @@ def cancel_ride(request, ride_id):
     reason = str(request.data.get("reason") or "Plans changed")[:140]
     with transaction.atomic():
         move(Ride.objects.filter(pk=ride.pk), "cancelled", ACTIVE_RIDE, "This ride has already ended.")
-        told = list(ride.bookings.filter(status__in=["requested", "accepted"]).select_related("guest"))
-        ride.bookings.filter(pk__in=[b.pk for b in told]).update(status="cancelled", reason=reason)
+        told = list(ride.bookings.filter(status__in=["requested", "accepted", "picked_up"]).select_related("guest"))
+        ride.bookings.filter(pk__in=[b.pk for b in told]).update(status="cancelled", reason=reason, status_changed=timezone.now())
         for b in told:
             notify(b.guest, "cancelled", f"{first_name(request.user)} cancelled the ride", f"{when(ride.depart_at)} · {reason}", request.user, b)
     ride.refresh_from_db()
@@ -354,6 +391,8 @@ def request_seat(request, ride_id):
         raise ApiError("ride_closed", "This ride isn’t taking requests any more.", 409)
     if ride.seats_left < 1:
         raise ApiError("ride_full", "This ride is full.", 409)
+    if geo.nearest(ride.route, data["meetPoint"])[1] > MAX_WALK_KM:
+        raise ApiError("meet_point_too_far", "This meet point is too far from the host’s route. Pick one within 1.5 km of it.")
     check_free(request.user)
     try:
         with transaction.atomic():
@@ -424,7 +463,7 @@ def confirm(booking, field):
     with transaction.atomic():
         Booking.objects.filter(pk=booking.pk, **{f"{field}__isnull": True}).update(**{field: timezone.now()})
         Booking.objects.filter(pk=booking.pk, status="accepted", host_confirmed_at__isnull=False,
-                               guest_confirmed_at__isnull=False).update(status="picked_up")
+                               guest_confirmed_at__isnull=False).update(status="picked_up", status_changed=timezone.now())
 
 
 @extend_schema(request=None, responses=OpenApiTypes.OBJECT)
@@ -470,12 +509,14 @@ def no_show(request, booking_id):
 def my_trip(request):
     """What the app shows on Home: the ride you're hosting, and your latest seat request or booking.
     A booking that ended in the last 24 h is still returned, so the app can say "declined" or "cancelled"."""
+    tidy()
     ride = Ride.objects.filter(host=request.user, status__in=ACTIVE_RIDE).select_related("vehicle").first()
     since = timezone.now() - timedelta(hours=24)
     booking = (
         Booking.objects.filter(guest=request.user).select_related("ride__host", "ride__vehicle").order_by("-created").first()
     )
-    if booking and booking.status not in ACTIVE_BOOKING and booking.created < since:
+    still_on = booking and booking.status in ACTIVE_BOOKING and booking.ride.status in ACTIVE_RIDE
+    if booking and not still_on and booking.status_changed < since:
         booking = None
     return Response({"ride": host_view(ride) if ride else None, "booking": guest_view(booking) if booking else None})
 
