@@ -78,7 +78,7 @@ export default function Verify() {
     <Screen
       back
       title="Enter the code"
-      subtitle={`We sent a 6-digit code to ${email}`}
+      subtitle={purpose === "reset" ? `If ${email} has a Cpool account, we sent it a 6-digit code` : `We sent a 6-digit code to ${email}`}
       footer={
         <>
           <Button title="Verify" onPress={() => submit(digits.join(""))} loading={loading} disabled={!digits.every(Boolean)} />

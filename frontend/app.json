@@ -12,7 +12,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#111827",
+        "backgroundColor": "#CCE5D2",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -25,9 +25,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#111827",
+          "backgroundColor": "#DDEED8",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 140
+          "imageWidth": 170
         }
       ],
       [
@@ -52,7 +52,14 @@
           "locationWhenInUsePermission": "Cpool uses your location to show rides near you and your pickup point."
         }
       ],
-      "@rnmapbox/maps"
+      "@rnmapbox/maps",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#0E6464"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,

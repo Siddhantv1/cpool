@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PersonAvatar } from "../../components/RideUI";
 import { getAppearance, setAppearance, useTheme } from "../../constants/theme";
@@ -198,7 +198,7 @@ export default function Account() {
             subtitle="Ride accepted, cancelled, host nearby"
             right={<Switch value={!session.soundsOff} onValueChange={(on) => set({ soundsOff: !on })} accessibilityLabel="Sounds and vibration" />}
           />
-          <Row icon="notifications-outline" title="Notifications" right={<Text style={{ color: colors.textMuted }}>On</Text>} onPress={soon("Notification settings")} />
+          <Row icon="notifications-outline" title="Notifications" subtitle="Choose which alerts you get" onPress={() => Linking.openSettings()} />
           <Row
             icon="moon-outline"
             title="Appearance"

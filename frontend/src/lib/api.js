@@ -39,7 +39,8 @@ export async function forgotPassword(email) {
 // POST /v1/auth/verify {email, code, purpose: "signup" | "reset"} -> {token}
 export async function verifyCode(email, code, purpose) {
   await wait();
-  if (code !== FAKE_CODE) throw new Error("That code is wrong. Check your email and try again.");
+  const noAccount = purpose === "reset" && !users.has(normalize(email)); // the backend never sent this email a code
+  if (code !== FAKE_CODE || noAccount) throw new Error("That code is wrong. Check your email and try again.");
   return { token: `${purpose}:${normalize(email)}` };
 }
 
@@ -54,6 +55,8 @@ export async function setPassword(token, password, phone, gender) {
   if (purpose === "signup") {
     if (!isMobile(phone ?? "")) throw new Error("Enter your 10-digit mobile number.");
     profiles.set(email, { ...profiles.get(email), phone: `+91${phone}`, gender: gender ?? null });
+  } else if (!users.has(email)) {
+    throw new Error("No account found for this email.");
   }
   users.set(email, password);
   return { ok: true };

@@ -10,6 +10,7 @@ import { useTheme } from "../../constants/theme";
 import { setRole } from "../../lib/api";
 import { OFFICES } from "../../lib/mock";
 import { resetDraft } from "../../lib/onboarding";
+import { maybeAskForNotifications } from "../../lib/notify";
 import { getSession, updateSession } from "../../lib/session";
 import { cancelPublished, confirmWithdraw, placeName, publishRide, receiveRequests, swapRoute, useTrips } from "../../lib/trips";
 import { useArea } from "../../lib/useArea";
@@ -256,6 +257,7 @@ function OfferView({ vehicle }) {
     publishRide({ from: places.from, to: places.to, when: whenLabel(when), at: when, seats });
     // shortcut: example requests arrive a few seconds after publishing; real ones come from the backend as push notifications.
     timer.current = setTimeout(receiveRequests, 4000);
+    maybeAskForNotifications({ title: "Know when colleagues ask for a seat", text: "Accept or decline right from the notification, and get a reminder when it’s time to leave.", preview: ["A colleague asked for a seat", "Accept or decline from here"] });
   }
 
   const pickPlace = (pick) => router.push({ pathname: "/places", params: { pick } });
