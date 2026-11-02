@@ -27,7 +27,7 @@ class AuthFlowTests(APITestCase):
     def register(self, email=EMAIL, password=PASSWORD):
         self.post("/v1/auth/signup", {"email": email})
         token = self.post("/v1/auth/verify", {"email": email, "code": self.last_code(), "purpose": "signup"})["token"]
-        self.post("/v1/auth/set-password", {"token": token, "password": password, "phone": "+919845012345"})
+        self.post("/v1/auth/set-password", {"token": token, "password": password, "phone": "+919845012345", "gender": "Female"})
 
     def sign_in(self, email=EMAIL, password=PASSWORD):
         data = self.post("/v1/auth/login", {"email": email, "password": password})
@@ -37,7 +37,7 @@ class AuthFlowTests(APITestCase):
     def test_signup_to_host_setup(self):
         self.register(email="  Asha.K@Perficient.com ")  # trimmed and lower-cased
         first = self.sign_in()
-        self.assertEqual((first["role"], first["vehicle"], first["phone"]), (None, None, "+919845012345"))  # first sign-in → first-time setup
+        self.assertEqual((first["role"], first["vehicle"], first["phone"], first["gender"]), (None, None, "+919845012345", "Female"))  # first sign-in → first-time setup
 
         self.client.put("/v1/me", {"role": "host"}, format="json")
         vehicle = self.post("/v1/me/vehicles", BIKE, 201)
@@ -90,8 +90,8 @@ class AuthFlowTests(APITestCase):
     def test_weak_password_and_bad_token(self):
         self.post("/v1/auth/signup", {"email": EMAIL})
         token = self.post("/v1/auth/verify", {"email": EMAIL, "code": self.last_code(), "purpose": "signup"})["token"]
-        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "short1", "phone": "9845012345"}, 400)["code"], "weak_password")
-        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "password1", "phone": "9845012345"}, 400)["code"], "weak_password")  # too common
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "short1", "phone": "9845012345", "gender": "Male"}, 400)["code"], "weak_password")
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": "password1", "phone": "9845012345", "gender": "Male"}, 400)["code"], "weak_password")  # too common
         self.assertEqual(self.post("/v1/auth/set-password", {"token": "forged", "password": PASSWORD}, 400)["code"], "token_expired")
 
     def test_change_password_rotates_token(self):
@@ -131,7 +131,9 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD}, 400)["code"], "phone_required")
         self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": "12345"}, 400)["code"], "invalid_phone")
         self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": "5845012345"}, 400)["code"], "invalid_phone")  # must start 6-9
-        self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": " 98450-12345"})
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": "9845012345"}, 400)["code"], "gender_required")
+        self.assertEqual(self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": "9845012345", "gender": "Other"}, 400)["code"], "invalid_gender")
+        self.post("/v1/auth/set-password", {"token": token, "password": PASSWORD, "phone": " 98450-12345", "gender": "Prefer not to say"})
         self.sign_in()
         self.assertEqual(self.client.get("/v1/me").data["phone"], "+919845012345")  # stored in one format
 

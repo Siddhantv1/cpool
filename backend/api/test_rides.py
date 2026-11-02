@@ -85,6 +85,8 @@ class RideTests(APITestCase):
         self.assertEqual(hit["route"][0], hit["meetPoint"])  # starts at the meet point...
         self.assertNotIn(ROUTE[0], hit["route"])  # ...so the host's start (home) is never sent
         self.assertIsNone(hit["host"]["phone"])  # phone only after acceptance
+        self.assertEqual((hit["host"]["plate"], hit["host"]["plateLast4"], hit["host"]["helmet"]), (None, "2231", None))  # plate masked; car → no helmet
+        self.assertEqual(hit["price"], 30)  # ~4.5 km shared × ₹7 = ₹31.4 → nearest ₹5
         self.assertEqual(self.search(self.guest, FARTHER)[0]["match"], "partial")
         self.assertEqual(self.search(self.guest, FAR), [])
         self.assertEqual(self.search(self.host, NEAR), [])  # not your own ride
@@ -298,3 +300,25 @@ class RideTests(APITestCase):
         self.call(self.guest, "post", f"/v1/rides/{ride['id']}/locations", {"coords": [77.65, 12.935]})
         waiting = {g["name"]: g["atMeetPoint"] for g in self.call(self.host, "get", f"/v1/rides/{ride['id']}/live")["guests"]}
         self.assertEqual(waiting, {"Guest Two": True, "Guest One": False})
+
+    def test_people_helmet_plate_and_price(self):
+        User.objects.filter(pk=self.host.pk).update(gender="Female")
+        User.objects.filter(pk=self.guest.pk).update(gender="Prefer not to say")
+        bike = Vehicle.objects.create(owner=self.host, type="bike", number="KA01HX8812", model="Pulsar", mfg_month=1, mfg_year=2020, seats=1, helmet="guest")
+        User.objects.filter(pk=self.host.pk).update(default_vehicle=bike)
+        ride = self.offer(seats=1, vehicleId=bike.id)
+        [hit] = self.search(self.guest, NEAR)
+        self.assertEqual((hit["host"]["gender"], hit["host"]["helmet"], hit["host"]["type"]), ("Female", False, "bike"))  # bike without a spare helmet
+        self.assertEqual(hit["price"], 20)  # ~4.5 km × ₹4 = ₹18 → ₹20
+
+        booking = self.request_seat(self.guest, ride["id"])
+        self.assertEqual((booking["ride"]["host"]["plate"], booking["ride"]["price"]), (None, 20))
+        [req] = self.call(self.host, "get", "/v1/me/trip")["ride"]["bookings"]
+        self.assertEqual((req["guest"]["gender"], req["price"]), (None, 20))  # "Prefer not to say" is never shown
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/accept")
+        self.assertEqual(self.call(self.guest, "get", "/v1/me/trip")["booking"]["ride"]["host"]["plate"], "KA01HX8812")  # full plate once accepted
+        self.assertEqual(self.alerts(self.guest)[0]["who"]["gender"], "Female")
+
+    def test_short_ride_minimum_price(self):
+        from .rides import seat_price
+        self.assertEqual((seat_price("car", 0.4), seat_price("bike", 1), seat_price("car", 10)), (10, 10, 70))

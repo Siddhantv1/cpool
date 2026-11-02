@@ -169,6 +169,9 @@ The contract between the app and the backend. **If a route or shape changes, upd
 - **Login token:** every route except sign-up/login needs `Authorization: Bearer <token>`.
 - **Errors:** HTTP 4xx with `{code, message}`; invalid input also has `fields: {name: message}`.
 - **Coordinates** are `[lng, lat]`. **Times** are ISO 8601 with a timezone.
+- **A person shown to someone else** (hosts in search, guests on a request, the person on an alert): `{name, initials, gender, phone}`. `gender` is `"Female"` or `"Male"`, or null for "Prefer not to say"; the app uses it for the default avatar. `phone` is null until the seat is accepted.
+- **A host shown to a guest** also has `{vehicle, type, colour, plate, plateLast4, helmet}`. `plate` is null until the seat is accepted (`plateLast4` is always there). `helmet` is `true` (spare helmet) or `false` (bring your own) for bikes, and null for cars.
+- **`price`:** what the guest pays the host per seat, outside the app (cash or UPI). It's a fuel share of the distance ridden together: car ₹7/km, bike ₹4/km, rounded to ₹5, at least ₹10.
 
 ### Sign-up and login
 | Method | Path | Request → response |
@@ -176,17 +179,17 @@ The contract between the app and the backend. **If a route or shape changes, upd
 | POST | `/v1/auth/signup` | `{email}` → `{ok}`: sends a code. Errors: `not_work_email`, `already_registered` |
 | POST | `/v1/auth/forgot` | `{email}` → `{ok}`: sends a code (same answer whether or not the account exists) |
 | POST | `/v1/auth/verify` | `{email, code, purpose: "signup" \| "reset"}` → `{token}` (valid 15 min). Errors: `wrong_code`, `code_expired` (codes last 10 min), `too_many_tries` (5) |
-| POST | `/v1/auth/set-password` | `{token, password, phone}` → `{ok}`. A sign-up token creates the account and **needs `phone`**: an Indian mobile, 10 digits starting 6–9, `+91` optional, stored as `+91XXXXXXXXXX`. A reset token ignores `phone` and signs out every phone. Errors: `token_expired`, `phone_required`, `invalid_phone`, `weak_password`, `already_registered` |
-| POST | `/v1/auth/login` | `{email, password}` → `{token, role, vehicle, phone}`. `role` is null on the first sign-in, which leads to first-time setup. Errors: `not_registered`, `wrong_password`, `account_disabled` |
+| POST | `/v1/auth/set-password` | `{token, password, phone, gender}` → `{ok}`. A sign-up token creates the account and **needs `phone`** (an Indian mobile, 10 digits starting 6–9, `+91` optional, stored as `+91XXXXXXXXXX`) **and `gender`** (`"Female"`, `"Male"` or `"Prefer not to say"`). A reset token ignores both and signs out every phone. Errors: `token_expired`, `phone_required`, `invalid_phone`, `gender_required`, `invalid_gender`, `weak_password`, `already_registered` |
+| POST | `/v1/auth/login` | `{email, password}` → `{token, role, vehicle, phone, gender}`. `role` is null on the first sign-in, which leads to first-time setup. Errors: `not_registered`, `wrong_password`, `account_disabled` |
 | POST | `/v1/auth/logout` | → `{ok}`: the token stops working |
 
 ### Me
 | Method | Path | Request → response |
 |---|---|---|
 | GET | `/v1/me` | `{email, name, gender, phone, role, vehicle}` |
-| PUT / PATCH | `/v1/me` | changes only the fields sent: `role` (`"guest"` \| `"host"`, set at first-time setup), `name`, `gender`, `phone` (same check as sign-up; it can be changed, not removed) |
+| PUT / PATCH | `/v1/me` | changes only the fields sent: `role` (`"guest"` \| `"host"`, set at first-time setup), `name`, `gender` (same values as sign-up), `phone` (same check as sign-up; it can be changed, not removed) |
 | POST | `/v1/me/password` | `{current, new}` → `{ok, token}`. Other phones are signed out, so use the new token. Errors: `wrong_password`, `weak_password` |
-| GET | `/v1/me/trip` | what Home shows; poll it until push notifications exist. Returns `{ride, booking}`: **`ride`** is the ride you host, with its `bookings` (oldest first; `alongKm` is how far along your route each guest is, so sort by it to drive pickups in order); **`booking`** is your latest seat request (kept for 24 h after it ends, so the app can show "declined") |
+| GET | `/v1/me/trip` | what Home shows; poll it until push notifications exist. Returns `{ride, booking}`: **`ride`** is the ride you host, with its `bookings` (oldest first; each has `price`, and `alongKm`, how far along your route that guest is, so sort by it to drive pickups in order); **`booking`** is your latest seat request, with the host and `price` under `booking.ride` (kept for 24 h after it ends, so the app can show "declined") |
 | GET | `/v1/me/history` | My rides → Past and the Account numbers: `{stats: {ridesTaken, ridesGiven, kmShared}, rides: [{role, rideId, when, from, to, with, km}]}` |
 | POST | `/v1/me/delete` | `{password}` → `{ok}`: deletes your account and wipes your name, email, phone and number plates. Past rides stay for others, showing "Deleted user". Errors: `wrong_password`, `already_on_trip` |
 | PUT | `/v1/me/devices` | push notification token: **not built yet** |
@@ -211,7 +214,7 @@ The contract between the app and the backend. **If a route or shape changes, upd
 | Method | Path | Request → response |
 |---|---|---|
 | POST | `/v1/rides` | `{from, to, departAt, seats, vehicleId?, route: [[lng, lat], …]}`. `from` and `to` are `{officeId}` or `{name, coords}`, and exactly one must be an office. `departAt` must be 10 min to 7 days ahead. `route` is the road route from Mapbox Directions. Errors: `needs_office`, `bad_time`, `no_vehicle`, `too_many_seats`, `already_on_trip` |
-| GET | `/v1/rides/search` | `?officeId=&direction=to_office\|from_office&at=<ISO>&lng=&lat=`. `lng`/`lat` is your pickup, or your drop when leaving the office. Returns rides leaving within ±30 min whose route passes within 1.5 km: `[{id, host, departAt, meetPoint, walkToMeters, rideKm, walkFromMeters, seatsFree, seatsTotal, match: "full" \| "partial", route}]`. `route` is only the part you ride on. `host.phone` is null until accepted. Full rides are never returned |
+| GET | `/v1/rides/search` | `?officeId=&direction=to_office\|from_office&at=<ISO>&lng=&lat=`. `lng`/`lat` is your pickup, or your drop when leaving the office. Returns rides leaving within ±30 min whose route passes within 1.5 km: `[{id, host, departAt, meetPoint, walkToMeters, rideKm, walkFromMeters, seatsFree, seatsTotal, match: "full" \| "partial", price, route}]`. `route` is only the part you ride on. `host.phone` and `host.plate` are null until accepted. Full rides are never returned |
 | POST | `/v1/rides/{id}/start` | host only. Needed before guests can be marked picked up |
 | POST | `/v1/rides/{id}/complete` | host only, after `start` |
 | POST | `/v1/rides/{id}/cancel` | host only. `{reason?}`: cancels every booking on the ride and tells the guests |

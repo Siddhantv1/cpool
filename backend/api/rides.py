@@ -26,7 +26,10 @@ MAX_WALK_KM = 1.5  # rides whose route passes farther than this from you aren't 
 FULL_MATCH_KM = 0.5  # walks up to this are a "full" match, longer ones "partial"
 WINDOW = timedelta(minutes=30)  # search shows rides leaving within ± this of your time
 MIN_NOTICE, MAX_AHEAD = timedelta(minutes=10), timedelta(days=7)  # same limits as the app's time picker
-SEES_PHONE = ["accepted", "picked_up"]  # phone numbers are shared only once a seat is confirmed
+SEES_PHONE = ["accepted", "picked_up"]  # phone numbers and full number plates are shared only once a seat is confirmed
+# What a guest pays the host per seat, outside the app (cash / UPI): a fuel share of the distance they ride together.
+# ponytail: flat rates in code; move to an admin-editable rate table (fuel type × vehicle size) when someone asks to change them.
+PRICE_PER_KM = {"car": 7, "bike": 4}
 
 
 # ---------- input shapes ----------
@@ -102,7 +105,17 @@ def display_name(user):
 
 def person(user, phone=False):
     name = display_name(user)
-    return {"name": name, "initials": "".join(w[0] for w in name.split()[:2]).upper(), "phone": (user.phone or None) if phone else None}
+    return {
+        "name": name,
+        "initials": "".join(w[0] for w in name.split()[:2]).upper(),
+        "gender": user.gender if user.gender in ("Female", "Male") else None,  # picks the drawn avatar; nothing for "Prefer not to say"
+        "phone": (user.phone or None) if phone else None,
+    }
+
+
+def seat_price(vehicle_type, km):
+    """Rupees per seat: km × rate, rounded to the nearest ₹5, at least ₹10."""
+    return max(10, int(km * PRICE_PER_KM[vehicle_type] / 5 + 0.5) * 5)
 
 
 def first_name(user):
@@ -122,8 +135,19 @@ def notify(user, kind, title, text, who, booking):
 
 
 def host_info(ride, phone=False):
+    """The host as a guest sees them. The full plate comes with the phone number, once the seat is confirmed."""
     v = ride.vehicle
-    return {**person(ride.host, phone), "vehicle": v.model, "type": v.type, "plate": v.number, "colour": v.colour, "helmet": v.helmet}
+    return {
+        **person(ride.host, phone),
+        "vehicle": v.model, "type": v.type, "colour": v.colour,
+        "plate": v.number if phone else None,
+        "plateLast4": v.number[-4:],
+        "helmet": v.helmet == "host" if v.type == "bike" else None,  # bikes: true = the host brings a spare helmet
+    }
+
+
+def price_for(ride, meet):
+    return seat_price(ride.vehicle.type, geo.length_km(shared_part(ride, meet)[3]))
 
 
 def shared_part(ride, point):
@@ -153,6 +177,7 @@ def guest_view(booking):
             "status": ride.status,
             "host": host_info(ride, phone=booking.status in SEES_PHONE),
             "route": shared_part(ride, booking.meet)[3],
+            "price": price_for(ride, booking.meet),
         },
     }
 
@@ -177,6 +202,7 @@ def host_view(ride):
             "meetPoint": b.meet,
             "meetName": b.meet_name,
             "alongKm": round(geo.nearest(ride.route, b.meet)[2], 2),  # how far along your route this guest is: sort by it to drive pickups in order
+            "price": price_for(ride, b.meet),
             "createdAt": b.created,
             "guest": {**person(b.guest, phone=b.status in SEES_PHONE), "rides": b.guest.bookings.filter(status="picked_up").count()},
         } for b in bookings],
@@ -262,6 +288,7 @@ def search(request):
             "seatsFree": ride.seats_left,
             "seatsTotal": ride.seats_total,
             "match": "full" if walk_km <= FULL_MATCH_KM else "partial",
+            "price": seat_price(ride.vehicle.type, ride_km),
             "route": route,
         })
     return Response(results)
