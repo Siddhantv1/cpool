@@ -106,6 +106,17 @@ export async function addVehicle(email, vehicle) {
   return { ok: true };
 }
 
+// POST /v1/me/delete {password} → { ok }: deletes the account and frees its number plates. Error code "wrong_password".
+export async function deleteAccount(email, password) {
+  await wait();
+  const key = normalize(email);
+  if (users.get(key) !== password) throw Object.assign(new Error("That password is wrong. Try again."), { code: "wrong_password" });
+  users.delete(key);
+  profiles.delete(key);
+  plates.forEach((owner, plate) => owner === key && plates.delete(plate));
+  return { ok: true };
+}
+
 // ---------- Rides (example data until the backend is ready) ----------
 
 // ---- Place search: Mapbox Search Box API (suggest while typing, retrieve coordinates when chosen) ----

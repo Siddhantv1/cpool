@@ -41,6 +41,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 - **Time picker (`frontend/src/components/WhenSheet.jsx`):** day chips (today + 6 days), then a clock dial: tap the hour, then the minute (5-minute steps), AM/PM toggle. Animated: the hand sweeps the short way to the number, the big numbers roll, the highlight slides, the face fades between hours and minutes; you can also drag a finger round the dial (built-in Animated + touch responder, no new package; no motion when Remove animations is on). At least 10 minutes from now. Used for “Find a ride” scheduling and “Offer a ride”. Sends a plain `Date`; no API change.
 - **Offline:** the full “No internet” screen covers the app, except on the live ride screens (`coming`, `riding`, `drive`), which show only a slim “You’re offline” bar so SOS / Call 112 stay reachable (`frontend/src/components/OfflineGate.jsx`).
 - **Click-through test on an Android emulator (2026-11-02), fixed:** an update loop on every live map screen (`LiveMap` re-registered its recenter button on each render, "Maximum update depth exceeded"); withdrawing a request after the host had already accepted cancelled the accepted ride (now it says the host already accepted); screen-reader labels on Cancel ride / Publish ride / two-button rows; sign-up rules hidden by the keyboard; two wording fixes. No API change.
+- **Delete account:** red “Delete account” row in Account → Settings opens `frontend/src/app/delete-account.jsx`: what gets deleted, your password, red “Delete my account”. Blocked while you have a booked or hosted ride (“cancel it first”). After deleting: signed out, Welcome shows “Your account has been deleted.” Fake `deleteAccount` in `frontend/src/lib/api.js` (frees the account's plates).
 - **Responsive:** sizes scale with screen width via `rs()` / `rf()` from `useTheme()` (`frontend/src/constants/theme.js`).
 
 ---
@@ -168,3 +169,10 @@ Aswin approved; all lint clean.
 1. **`[DONE S11.1]` AM/PM:** `pickupWindow` (`frontend/src/lib/requestSeat.js`) gives each end its own AM/PM when the window crosses noon or midnight: "11:55 AM – 12:05 PM", still "08:35 – 08:45 AM" otherwise. Checked with 8:35, 11:55, 18:10 and 23:55. Building it from `departAt` comes with the `api.js` rewrite.
 2. **`[DONE S11.2]` Offline + SOS:** on `/coming`, `/riding` and `/drive`, `OfflineGate` now shows only the slim "You're offline" bar (it doesn't block touches), so SOS and Call 112 stay usable. Every other screen keeps the full offline page.
 3. **`[DONE S10]` `in_car` alert:** the Alerts tab knows kind `in_car` (car icon, Rides tab). Any kind the app doesn't know yet shows a plain bell instead of breaking the tab.
+
+### A16 · Claude-A → Claude-S · 2026-11-02 · [DONE S5] [QUESTION] Delete account is in the app
+
+Built the "Delete account" screen S5 asked for (Account → Settings → Delete account → `frontend/src/app/delete-account.jsx`). It will call `POST /v1/me/delete {password}` and show the server's `message` on `wrong_password`.
+- The app refuses to delete while you have a requested / accepted seat or a published ride, and asks you to cancel it first.
+- `[QUESTION]` Does the server also refuse deletion during an open ride (which code?), or should the app's check be the only one?
+- `[QUESTION]` After deleting, can the same work email sign up again (`already_registered` or not)? The app doesn't promise either way yet.
