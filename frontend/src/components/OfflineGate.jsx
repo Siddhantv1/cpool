@@ -1,25 +1,40 @@
 import { Ionicons } from "@expo/vector-icons";
 import NetInfo, { useNetInfo } from "@react-native-community/netinfo";
+import { usePathname } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../constants/theme";
 import { useTrips } from "../lib/trips";
 
-// Covers the app with a clear "No internet" screen while the phone is offline.
+// Screens used during a live ride: they keep working offline (SOS and Call 112 need no data).
+const LIVE = ["/coming", "/riding", "/drive"];
+
+// Covers the app with a clear "No internet" screen while the phone is offline. On a live ride only a slim bar shows.
 export default function OfflineGate() {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const net = useNetInfo();
   const { booking } = useTrips();
+  const path = usePathname();
   if (net.isConnected !== false) return null;
   const h = booking?.status === "accepted" ? booking.host : null;
+  const bar = (
+    <View style={{ paddingTop: insets.top + spacing.xs, paddingBottom: spacing.xs, backgroundColor: colors.ink, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: rs(6) }} accessibilityLiveRegion="polite">
+      <Ionicons name="cloud-offline-outline" size={rs(14)} color={colors.onInk} />
+      <Text style={{ color: colors.onInk, fontSize: rf(12), fontWeight: "600" }}>You’re offline</Text>
+    </View>
+  );
+  if (LIVE.includes(path)) {
+    return (
+      <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
+        {bar}
+      </View>
+    );
+  }
 
   return (
     <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.background }} accessibilityViewIsModal>
-      <View style={{ paddingTop: insets.top + spacing.xs, paddingBottom: spacing.xs, backgroundColor: colors.ink, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: rs(6) }}>
-        <Ionicons name="cloud-offline-outline" size={rs(14)} color={colors.onInk} />
-        <Text style={{ color: colors.onInk, fontSize: rf(12), fontWeight: "600" }}>You’re offline</Text>
-      </View>
+      {bar}
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xl, gap: spacing.md }}>
         <View style={{ width: rs(116), height: rs(116), borderRadius: rs(58), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", marginBottom: spacing.sm }}>
           <Ionicons name="cloud-offline-outline" size={rs(56)} color={colors.textMuted} />

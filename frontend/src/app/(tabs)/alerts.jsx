@@ -15,7 +15,9 @@ const KIND = {
   declined: { icon: "remove", tone: "danger", group: "rides" },
   cancelled: { icon: "close", tone: "danger", group: "rides" },
   request: { icon: "person-add", tone: "primary", group: "requests" },
+  in_car: { icon: "car", tone: "green", group: "rides" },
 };
+const kindOf = (a) => KIND[a.kind] ?? { icon: "notifications", tone: "primary", group: "rides" };
 const TABS = [
   ["all", "All"],
   ["rides", "Rides"],
@@ -26,7 +28,7 @@ const DAY = 24 * 60 * 60 * 1000;
 // Person photo (initials) with a small coloured badge showing what happened.
 function AlertIcon({ alert }) {
   const { colors, rs } = useTheme();
-  const k = KIND[alert.kind];
+  const k = kindOf(alert);
   const tone = colors[k.tone];
   return (
     <View style={{ width: rs(48), height: rs(48) }}>
@@ -99,9 +101,9 @@ export default function Alerts() {
   const [now, setNow] = useState(Date.now);
   useFocusEffect(useCallback(() => setNow(Date.now()), []));
 
-  const items = alerts.filter((a) => tab === "all" || KIND[a.kind].group === tab);
+  const items = alerts.filter((a) => tab === "all" || kindOf(a).group === tab);
   const unread = alerts.filter((a) => !a.read).length;
-  const count = (key) => alerts.filter((a) => !a.read && (key === "all" || KIND[a.kind].group === key)).length;
+  const count = (key) => alerts.filter((a) => !a.read && (key === "all" || kindOf(a).group === key)).length;
   const sections = [
     ["New", items.filter((a) => !a.read)],
     ["Today", items.filter((a) => a.read && now - a.at < DAY)],

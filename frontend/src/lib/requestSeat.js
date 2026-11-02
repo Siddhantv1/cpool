@@ -35,12 +35,14 @@ export function useOpenRideWhenAccepted() {
   }, [status]);
 }
 
-// "8:35" -> "08:35 – 08:45 AM": the 10-minute pickup window shown on ride cards.
+// "8:35" -> "08:35 – 08:45 AM", "11:55" -> "11:55 AM – 12:05 PM": the 10-minute pickup window shown on ride cards.
 export function pickupWindow(hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
-  const fmt = (t) => `${String(Math.floor(t / 60) % 12 || 12).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+  const clock = (t) => `${String(Math.floor(t / 60) % 12 || 12).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+  const half = (t) => (Math.floor(t / 60) % 24 < 12 ? "AM" : "PM");
   const start = h * 60 + m;
-  return `${fmt(start)} – ${fmt(start + 10)} ${h < 12 ? "AM" : "PM"}`;
+  const end = start + 10;
+  return half(start) === half(end) ? `${clock(start)} – ${clock(end)} ${half(end)}` : `${clock(start)} ${half(start)} – ${clock(end)} ${half(end)}`;
 }
 export const ampm = (hhmm) => (Number(hhmm.split(":")[0]) < 12 ? "AM" : "PM");
 
