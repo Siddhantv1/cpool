@@ -29,6 +29,7 @@ CODE_MINUTES = 10
 CODE_TRIES = 5
 SET_PASSWORD_SECONDS = 15 * 60
 WORK_EMAIL = re.compile(r"^[^\s@]+@perficient\.com$", re.I)
+GENDERS = ["Female", "Male", "Prefer not to say"]  # the app draws a default avatar from Female / Male
 MOBILE = re.compile(r"^(?:\+?91|0)?([6-9]\d{9})$")  # Indian mobile: 10 digits starting 6-9
 PLATE = re.compile(r"^([A-Z]{2}\d{1,2}[A-Z]{0,3}\d{4}|\d{2}BH\d{4}[A-Z]{1,2})$")  # KL34B3211, 22BH1234AA
 
@@ -152,7 +153,8 @@ def verify(request):
 
 
 @auth_view({"token": serializers.CharField(), "password": serializers.CharField(),
-            "phone": serializers.CharField(required=False, help_text="Required when creating an account (sign-up token)")})
+            "phone": serializers.CharField(required=False, help_text="Required when creating an account (sign-up token)"),
+            "gender": serializers.ChoiceField(GENDERS, required=False, help_text="Required when creating an account (sign-up token)")})
 def set_password(request):
     try:
         data = signing.loads(request.data.get("token", ""), salt="set-password", max_age=SET_PASSWORD_SECONDS)
@@ -170,8 +172,13 @@ def set_password(request):
         phone = indian_mobile(request.data.get("phone"))
         if not phone:
             raise ApiError("invalid_phone", "Enter a 10-digit Indian mobile number.")
+        gender = request.data.get("gender")
+        if not gender:
+            raise ApiError("gender_required", "Choose Female, Male or Prefer not to say.")
+        if gender not in GENDERS:
+            raise ApiError("invalid_gender", "Choose Female, Male or Prefer not to say.")
         check_password_rules(password, User(username=email, email=email))
-        User.objects.create_user(username=email, email=email, password=password, phone=phone)
+        User.objects.create_user(username=email, email=email, password=password, phone=phone, gender=gender)
     else:
         user = User.objects.filter(username=email).first()
         if not user:
@@ -184,7 +191,7 @@ def set_password(request):
 
 
 @auth_view({"email": serializers.EmailField(), "password": serializers.CharField()},
-           body("LoginResult", {"token": serializers.CharField(), "role": serializers.CharField(allow_null=True), "vehicle": serializers.DictField(allow_null=True), "phone": serializers.CharField(allow_null=True)}))
+           body("LoginResult", {"token": serializers.CharField(), "role": serializers.CharField(allow_null=True), "vehicle": serializers.DictField(allow_null=True), "phone": serializers.CharField(allow_null=True), "gender": serializers.CharField(allow_null=True)}))
 def login(request):
     email = work_email(request.data.get("email"))
     user = User.objects.filter(username=email).first()
@@ -197,7 +204,7 @@ def login(request):
     # ponytail: one token per user, shared by all their phones; logging out on one logs out all. Use django-rest-knox if that bites.
     token, _ = Token.objects.get_or_create(user=user)
     vehicle = user.vehicle()
-    return Response({"token": token.key, "role": user.role, "vehicle": VehicleSerializer(vehicle).data if vehicle else None, "phone": user.phone or None})
+    return Response({"token": token.key, "role": user.role, "vehicle": VehicleSerializer(vehicle).data if vehicle else None, "phone": user.phone or None, "gender": user.gender or None})
 
 
 @extend_schema(request=None, responses=OK)
@@ -255,6 +262,7 @@ class VehicleSerializer(serializers.ModelSerializer):
 class MeSerializer(serializers.ModelSerializer):
     name = serializers.CharField(min_length=2, max_length=40, required=False)
     phone = serializers.CharField(required=False, max_length=20)
+    gender = serializers.ChoiceField(GENDERS, required=False)
     vehicle = serializers.SerializerMethodField()
 
     class Meta:
