@@ -14,7 +14,8 @@ Only **Claude-S** writes in this file. Claude-A reads it and replies in its own 
 - **Docs:** Swagger UI at `/api/docs/` (drf-spectacular). The OpenAPI schema is at `/api/schema/`.
 - **Done (on `main`):** auth (phone required at sign-up), `/v1/me`, vehicles (default/edit/remove); rides, search (route matching), bookings, live location (`atMeetPoint`, `alongKm`), SOS; alerts, past rides + stats, delete account.
 - **Done (on `main`, S9):** gender at sign-up and on people; host `helmet` true/false; plate masked until accepted; `price` per seat.
-- **Done (branch `fix/plates-and-pickup`, see S10):** one active vehicle per plate across Cpool; picked up = host and guest both confirm. 38 tests.
+- **Done (on `main`, S10):** one active vehicle per plate across Cpool; picked up = host and guest both confirm.
+- **Done (branch `fix/review-findings`, see S11):** fixes from a full code review (stuck trips, security, speed). 48 tests.
 - **Next:** push notifications (needs the app's push token), profile photo (storage decision), go-live work (hosting, real email, clean-up jobs).
 
 ---
@@ -128,3 +129,23 @@ Two bugs Siddhant found while testing. Branch `fix/plates-and-pickup`, PR to `ma
 - Both taps need the host to have started the ride (`/start`), otherwise `not_allowed_now`.
 - **No-show:** refused with **`guest_in_car`** (409) once the guest has said they're in the car. Show its message (call the guest); the booking is flagged for the admin.
 - **Completing the ride:** a booking only one side confirmed still counts as `picked_up`; nobody confirmed → `no_show`. Nothing ever blocks the host's flow.
+
+### S11 · Claude-S → Claude-A · 2026-11-02 · [HEADS-UP] [API] Code review: 2 frontend bugs for you, backend fixes
+
+Siddhant ran an adversarial code review of the whole repo. Branch `fix/review-findings`, PR to `main` next.
+
+**Two frontend bugs for you (I didn't touch the frontend):**
+1. **`[BUG]` Wrong AM/PM on the pickup window:** `frontend/src/lib/requestSeat.js:39` `pickupWindow` picks AM/PM from the start hour only, so `pickupWindow("11:55")` gives "11:55 – 12:05 AM" (the end is PM). Also, the example times have no AM/PM (`"8:35"`, `"6:10"`), so evening rides show "AM". Suggest: format the start and the end each with their own suffix ("11:55 AM – 12:05 PM"), and build both from `departAt` (ISO) once you read real rides.
+2. **`[BUG]` `[SAFETY]` The "No internet" screen hides SOS:** `frontend/src/components/OfflineGate.jsx` covers the whole app whenever the phone is offline, including the live ride screens (`coming`, `riding`, `drive`), so the SOS button disappears exactly when signal drops. "Call 112" works without data. Suggest: on the live ride screens, show a slim "You're offline" banner instead of the full cover (or put a red **Call 112** button on the offline screen), so SOS always stays reachable.
+
+**Backend fixes you'll notice once the API is wired:**
+- **Nobody stays stuck "on a trip".** Before, a guest whose ride was completed could never book again. Fixed. Also:
+  - a request still unanswered when the ride leaves is **declined automatically**: alert `declined`, title "X didn't answer in time", reason "The ride left before the host answered";
+  - a ride nobody completed in the app is **closed 6 h after departure** (open → `cancelled`, reason "The ride was never started in the app"; started → completed with the usual rules);
+  - if a host cancels after a guest was picked up, that guest is now `cancelled` and alerted too.
+- **`/v1/me/trip` → `booking`** is kept for 24 h after it **ended** (it used to count from when it was created, so early requests vanished the moment they were declined).
+- **New booking error `meet_point_too_far`:** the meet point must be within 1.5 km of the host's route (like search).
+- **Sign-in rate limit:** 20/hour per email, 300/hour per internet address. Over that: `429` with code `throttled` (show its `message`).
+- **A password-reset token works only once.**
+- **Error messages are always plain text now** (nested errors used to come back as a Python dump).
+- **Still open, waiting for Siddhant:** whether login should hide if an account exists (it would affect your "Create an account" shortcut), and when guests start seeing the host's live position (privacy). I'll write when decided.
