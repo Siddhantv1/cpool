@@ -103,6 +103,9 @@ export function confirmWithdraw(onDone) {
       text: "Withdraw",
       style: "destructive",
       onPress: () => {
+        if (state.booking?.status !== "requested") {
+          return Alert.alert(`${first} already accepted`, "Your seat is confirmed. To cancel, open the ride and tap Cancel ride.");
+        }
         withdrawBooking();
         clearBooking();
         onDone?.();

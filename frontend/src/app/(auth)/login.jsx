@@ -41,7 +41,7 @@ export default function Login() {
     <Screen
       back
       title="Welcome back"
-      subtitle="Sign in with your Company email"
+      subtitle="Sign in with your work email"
       footer={
         <>
           <Button title="Sign in" onPress={onSignIn} loading={loading} disabled={!email.trim() || !password} />

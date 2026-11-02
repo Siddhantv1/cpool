@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { Keyboard, Pressable, Text, View } from "react-native";
@@ -8,6 +9,22 @@ import TextField from "../../components/TextField";
 import { useTheme } from "../../constants/theme";
 import { isMobile, setPassword } from "../../lib/api";
 import { passwordRules } from "../../lib/password";
+
+// One part of the sign-up form: a soft grey card with an icon and a title.
+function Card({ icon, title, onLayout, children }) {
+  const { colors, spacing, rs, rf } = useTheme();
+  return (
+    <View onLayout={onLayout} style={{ backgroundColor: colors.surface, borderRadius: rs(20), padding: spacing.md - 2, gap: spacing.sm + 2 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+        <View style={{ width: rs(28), height: rs(28), borderRadius: rs(9), backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+          <Ionicons name={icon} size={rs(16)} color={colors.primary} />
+        </View>
+        <Text accessibilityRole="header" style={{ color: colors.text, fontWeight: "700", fontSize: rf(14.5) }}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
 
 // Used by both flows: purpose = "signup" (new account: mobile number, gender for the default picture, password)
 // or "reset" (forgot password).
@@ -61,73 +78,16 @@ export default function SetPassword() {
     }
   }
 
-  return (
-    <Screen
-      scrollRef={scroll}
-      back
-      title={isReset ? "Set a new password" : "Set up your account"}
-      subtitle={isReset ? undefined : "Add your mobile number and create a password."}
-      footer={<Button title={isReset ? "Save password" : "Create account"} onPress={onSave} loading={loading} disabled={!allOk} />}
-    >
-      {isReset ? null : (
-        <View onLayout={(e) => (tops.current.phone = e.nativeEvent.layout.y)}>
-        <TextField
-          label="Mobile number"
-          prefix="+91"
-          value={phone}
-          onChangeText={(t) => {
-            const digits = t.replace(/\D/g, "");
-            setPhone(digits);
-            if (isMobile(digits) && !gender) {
-              Keyboard.dismiss();
-              goTo("gender");
-            }
-          }}
-          onBlur={() => setPhoneTouched(true)}
-          error={phoneError}
-          keyboardType="number-pad"
-          maxLength={10}
-          autoFocus
-          autoComplete="tel-national"
-          textContentType="telephoneNumber"
-        />
-        </View>
-      )}
-      {isReset ? null : (
-        <View style={{ gap: spacing.sm }} onLayout={(e) => (tops.current.gender = e.nativeEvent.layout.y)}>
-          <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>Gender</Text>
-          <View style={{ flexDirection: "row", gap: spacing.sm }} accessibilityRole="radiogroup">
-            {["Female", "Male"].map((g) => {
-              const on = gender === g;
-              return (
-                <Pressable
-                  key={g}
-                  onPress={() => pickGender(g)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: on }}
-                  style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: spacing.sm + 2, padding: spacing.sm + 2, borderRadius: radius.lg, borderWidth: 2, borderColor: on ? colors.primary : colors.line, backgroundColor: on ? colors.primarySurface : colors.background }}
-                >
-                  <PersonAvatar gender={g} size={rs(44)} />
-                  <Text style={{ flex: 1, color: on ? colors.primary : colors.text, fontWeight: "700", fontSize: fontSize.md }}>{g}</Text>
-                  <View style={{ width: rs(20), height: rs(20), borderRadius: rs(10), borderWidth: on ? rs(6) : 2, borderColor: on ? colors.primary : colors.border }} />
-                </Pressable>
-              );
-            })}
-          </View>
-          <Pressable onPress={() => pickGender("Prefer not to say")} accessibilityRole="radio" accessibilityState={{ checked: gender === "Prefer not to say" }} hitSlop={6} style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, alignSelf: "flex-start", paddingVertical: rs(4) }}>
-            <View style={{ width: rs(18), height: rs(18), borderRadius: rs(9), borderWidth: gender === "Prefer not to say" ? rs(5) : 2, borderColor: gender === "Prefer not to say" ? colors.primary : colors.border }} />
-            <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Prefer not to say</Text>
-          </Pressable>
-          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Enter the password for your account.</Text>
-        </View>
-      )}
-      <View onLayout={(e) => (tops.current.password = e.nativeEvent.layout.y)} style={{ gap: spacing.md }}>
+  // The two password boxes and the rules: inside a card on sign-up, plain on password reset.
+  const passwordPart = (
+    <>
       <TextField
         ref={passwordInput}
         label="Password"
         value={password}
         onChangeText={setPasswordText}
         secure
+        onCard={!isReset}
         autoFocus={isReset}
         autoComplete="new-password"
         textContentType="newPassword"
@@ -138,14 +98,17 @@ export default function SetPassword() {
         ref={confirmInput}
         label="Re-enter password"
         value={confirm}
-        onChangeText={setConfirm}
+        onChangeText={(t) => {
+          setConfirm(t);
+          scroll.current?.scrollToEnd({ animated: true });
+        }}
         secure
+        onCard={!isReset}
         autoComplete="new-password"
         textContentType="newPassword"
         onSubmitEditing={onSave}
         onFocus={() => setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 350)}
       />
-      </View>
       <View style={{ gap: spacing.xs }} accessibilityLabel="Password rules">
         {rules.map((r) => (
           <Text key={r.label} style={{ color: r.ok ? colors.success : colors.textMuted, fontSize: fontSize.sm }}>
@@ -153,6 +116,69 @@ export default function SetPassword() {
           </Text>
         ))}
       </View>
+    </>
+  );
+
+  return (
+    <Screen
+      scrollRef={scroll}
+      back
+      title={isReset ? "Set a new password" : "Set up your account"}
+      subtitle={isReset ? undefined : "Add your number, gender and password."}
+      footer={<Button title={isReset ? "Save password" : "Create account"} onPress={onSave} loading={loading} disabled={!allOk} />}
+    >
+      {isReset ? (
+        passwordPart
+      ) : (
+        <>
+          <Card icon="phone-portrait-outline" title="Mobile number" onLayout={(e) => (tops.current.phone = e.nativeEvent.layout.y)}>
+            <TextField
+              label="Mobile number"
+              prefix="+91"
+              onCard
+              value={phone}
+              onChangeText={(t) => {
+                const digits = t.replace(/\D/g, "");
+                setPhone(digits);
+                if (isMobile(digits) && !gender) {
+                  Keyboard.dismiss();
+                  goTo("gender");
+                }
+              }}
+              onBlur={() => setPhoneTouched(true)}
+              error={phoneError}
+              keyboardType="number-pad"
+              maxLength={10}
+              autoFocus
+              autoComplete="tel-national"
+              textContentType="telephoneNumber"
+            />
+          </Card>
+          <Card icon="person-outline" title="Gender" onLayout={(e) => (tops.current.gender = e.nativeEvent.layout.y)}>
+            <View style={{ flexDirection: "row", gap: spacing.xs + 2 }} accessibilityRole="radiogroup">
+              {["Female", "Male", "Prefer not to say"].map((g) => {
+                const on = gender === g;
+                return (
+                  <Pressable
+                    key={g}
+                    onPress={() => pickGender(g)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: on }}
+                    accessibilityLabel={g}
+                    style={{ flex: 1, alignItems: "center", gap: rs(4), paddingVertical: spacing.sm, paddingHorizontal: rs(4), borderRadius: radius.lg, borderWidth: 2, borderColor: on ? colors.primary : colors.background, backgroundColor: colors.background }}
+                  >
+                    <PersonAvatar gender={g} size={rs(40)} />
+                    <Text style={{ color: on ? colors.primary : colors.text, fontWeight: "700", fontSize: rf(12.5), textAlign: "center" }}>{g === "Prefer not to say" ? "Prefer not\nto say" : g}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card>
+          <Card icon="lock-closed-outline" title="Password" onLayout={(e) => (tops.current.password = e.nativeEvent.layout.y)}>
+            {passwordPart}
+          </Card>
+        </>
+      )}
       {error ? (
         <Text style={{ color: colors.error, fontSize: fontSize.sm }} accessibilityLiveRegion="polite">
           {error}
