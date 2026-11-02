@@ -92,8 +92,16 @@ export async function setRole(email, role) {
 
 // POST /v1/me/vehicles {type, number, model, mfgMonth, mfgYear, colour, seats, helmet} -> {ok}
 // The RC photo is never uploaded; only the details read from it.
+// Plates already on Cpool (plate -> email). The backend refuses a second one the same way: code "vehicle_exists".
+const plates = new Map();
 export async function addVehicle(email, vehicle) {
   await wait();
+  const owner = plates.get(vehicle.number);
+  if (owner) {
+    const message = owner === normalize(email) ? "You’ve already added this vehicle." : "This vehicle is already registered on Cpool. If it’s yours, contact the Cpool admin.";
+    throw Object.assign(new Error(message), { code: "vehicle_exists" });
+  }
+  plates.set(vehicle.number, normalize(email));
   profiles.set(normalize(email), { ...profiles.get(normalize(email)), vehicle });
   return { ok: true };
 }

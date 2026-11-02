@@ -39,6 +39,8 @@ class Vehicle(models.Model):
 
     class Meta:
         ordering = ["created"]
+        # A car or bike can be on only one active account at a time; removing it (or deleting the account) frees the plate.
+        constraints = [models.UniqueConstraint(fields=["number"], condition=models.Q(removed=False), name="one_active_vehicle_per_plate")]
 
     def __str__(self):
         return f"{self.number} · {self.model}"
@@ -108,6 +110,10 @@ class Booking(models.Model):
     meet_name = models.CharField(max_length=120)
     status = models.CharField(max_length=9, default="requested", choices=[(s, s) for s in STATUSES])
     reason = models.CharField(max_length=140, blank=True)
+    # Picked up counts when both say so: the host taps "Picked up", the guest taps "I'm in the car". Neither waits for the other.
+    host_confirmed_at = models.DateTimeField(null=True, blank=True)
+    guest_confirmed_at = models.DateTimeField(null=True, blank=True)
+    flagged = models.BooleanField(default=False)  # host tried "No-show" after the guest said they were in the car: admin to check
     created = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -150,7 +156,7 @@ class Sos(models.Model):
 class Alert(models.Model):
     """One line in the app's Alerts tab. Created when something happens to your ride or seat request."""
 
-    KINDS = ["request", "accepted", "declined", "cancelled"]  # same kinds as the app's Alerts tab
+    KINDS = ["request", "accepted", "declined", "cancelled", "in_car"]  # the app's Alerts tab kinds, plus "in_car" (guest says they're in the car)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="alerts")
     kind = models.CharField(max_length=9, choices=[(k, k) for k in KINDS])
     title = models.CharField(max_length=120)

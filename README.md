@@ -32,6 +32,8 @@ Every ride starts or ends at a Perficient office (Bellandur or Whitefield), by c
 - **Rules the server enforces:**
   - one trip at a time per person
   - a seat can't be given twice
+  - a vehicle (number plate) can be on only one account at a time
+  - a guest counts as picked up when both the host ("Picked up") and the guest ("I'm in the car") have confirmed; neither has to wait for the other
   - only the host answers requests
   - phone numbers are shared only after a seat is accepted
   - guests never see where the host's drive starts
@@ -198,15 +200,15 @@ The contract between the app and the backend. **If a route or shape changes, upd
 | Method | Path | Request → response |
 |---|---|---|
 | GET | `/v1/me/vehicles` | your vehicles; `isDefault` marks the default (the one you picked, else the first one added) |
-| POST | `/v1/me/vehicles` | `{type: "bike" \| "car", number, model, mfgMonth, mfgYear, colour?, seats, helmet}`. `seats`: bike 1, car 1–7. `helmet`: `"host"` \| `"guest"` for bikes, null for cars |
-| PATCH | `/v1/me/vehicles/{id}` | edit: only the fields sent change. Error: `vehicle_in_use` while the vehicle is on an open ride |
+| POST | `/v1/me/vehicles` | `{type: "bike" \| "car", number, model, mfgMonth, mfgYear, colour?, seats, helmet}`. `seats`: bike 1, car 1–7. `helmet`: `"host"` \| `"guest"` for bikes, null for cars. Error: `vehicle_exists` when that plate is already on Cpool (yours or someone else's) |
+| PATCH | `/v1/me/vehicles/{id}` | edit: only the fields sent change. Errors: `vehicle_in_use` while the vehicle is on an open ride, `vehicle_exists` for a plate already on Cpool |
 | DELETE | `/v1/me/vehicles/{id}` | remove it from the app (kept for past rides). Error: `vehicle_in_use` |
 | POST | `/v1/me/vehicles/{id}/default` | make it the default → your vehicle list |
 
 ### Alerts
 | Method | Path | Request → response |
 |---|---|---|
-| GET | `/v1/me/alerts` | newest first: `[{id, kind, title, text, at, read, who: {name, initials}, rideId, bookingId}]`. `kind` is `request`, `accepted`, `declined` or `cancelled` |
+| GET | `/v1/me/alerts` | newest first: `[{id, kind, title, text, at, read, who: {name, initials}, rideId, bookingId}]`. `kind` is `request`, `accepted`, `declined`, `cancelled` or `in_car` (a guest says they're in your car) |
 | POST | `/v1/me/alerts/read` | `{ids?}` → `{ok}`: marks those read (all of them if `ids` is left out) |
 | DELETE | `/v1/me/alerts/{id}` | removes one alert |
 
@@ -226,9 +228,12 @@ The contract between the app and the backend. **If a route or shape changes, upd
 | POST | `/v1/bookings/{id}/accept` | host: takes a seat. Error: `ride_full` when none are left |
 | POST | `/v1/bookings/{id}/reject` | host: declines the request |
 | POST | `/v1/bookings/{id}/cancel` | guest: `{reason?}` withdraws a request, or frees a confirmed seat |
-| POST | `/v1/bookings/{id}/picked-up` · `no-show` | host, after `start` |
+| POST | `/v1/bookings/{id}/picked-up` | host, after `start`: "Picked up". The host's app moves on straight away; the booking becomes `picked_up` once the guest has also confirmed |
+| POST | `/v1/bookings/{id}/in-car` | guest, after the host has started: "I'm in the car". The guest's app moves on straight away; the booking becomes `picked_up` once the host has also confirmed. The host gets an `in_car` alert |
+| POST | `/v1/bookings/{id}/no-show` | host, after `start`. Error: `guest_in_car` if the guest has said they're in the car (the booking is then flagged for the admin) |
 
 **Booking status:** `requested` → `accepted`, `declined`, `withdrawn` (by the guest) or `cancelled` (by the host) → `picked_up` or `no_show`.
+Bookings show `hostConfirmed` and `guestConfirmed` (true/false), so each app can show "waiting for the other person to confirm". When the host completes the ride, a booking that only one of them confirmed still counts as `picked_up`; one that nobody confirmed becomes `no_show`.
 
 ### Live location and SOS
 | Method | Path | Request → response |
