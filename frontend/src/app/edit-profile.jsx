@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Alert, Image, Pressable, Text, View } from "react-native";
 import Button from "../components/Button";
 import Screen from "../components/Screen";
+import { PersonAvatar } from "../components/RideUI";
 import TextField from "../components/TextField";
 import { useTheme } from "../constants/theme";
 import { isMobile } from "../lib/api";
@@ -52,17 +53,14 @@ export default function EditProfile() {
     router.back();
   }
 
-  const initials = (name.trim() || "?").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-
   return (
     <Screen back title="Edit profile" footer={<Button title="Save" onPress={save} />}>
       <Pressable onPress={changePhoto} accessibilityRole="button" accessibilityLabel="Change profile photo" style={{ alignSelf: "center", marginVertical: spacing.md }}>
         {photo ? (
           <Image source={{ uri: photo }} style={{ width: rs(112), height: rs(112), borderRadius: rs(56) }} accessible={false} />
         ) : (
-          <View style={{ width: rs(112), height: rs(112), borderRadius: rs(56), backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: colors.onPrimary, fontSize: rf(38), fontWeight: "800" }}>{initials}</Text>
-          </View>
+          // No photo yet: a drawn picture that follows the gender chosen below.
+          <PersonAvatar gender={gender} size={rs(112)} />
         )}
         <View style={{ position: "absolute", right: 0, bottom: 0, width: rs(36), height: rs(36), borderRadius: rs(18), backgroundColor: colors.ink, borderWidth: 3, borderColor: colors.background, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="camera" size={rs(16)} color={colors.onInk} />

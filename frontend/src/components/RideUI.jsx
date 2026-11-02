@@ -1,13 +1,16 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Alert, Linking, Pressable, Share, Text, View } from "react-native";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import { AccessibilityInfo, Alert, Animated, Easing, Linking, Pressable, Share, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../constants/theme";
 import { useMapControl } from "../lib/mapControl";
 
 // Pieces shared by the ride screens: avatar, number plate, SOS, ETA card, bottom sheet, stops.
 
-export function Avatar({ initials, color, size = 40 }) {
+// gender ("Female" | "Male") shows the drawn default picture; without it, coloured initials.
+export function Avatar({ initials, color, size = 40, gender }) {
   const { colors } = useTheme();
+  if (gender === "Female" || gender === "Male") return <PersonAvatar gender={gender} size={size} />;
   return (
     <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color, alignItems: "center", justifyContent: "center" }}>
       <Text style={{ color: colors.onImage, fontWeight: "800", fontSize: size * 0.34 }}>{initials}</Text>
@@ -153,4 +156,133 @@ export function ActionRow({ left, right }) {
     </Pressable>
   );
   return <View style={{ flexDirection: "row", gap: spacing.sm }}>{[btn(left, false), btn(right, true)]}</View>;
+}
+
+// "Request sent" panel on a ride you asked for: a spinning ring and a sliding line while the host decides, plus Cancel.
+export function RequestStatus({ name, onCancel }) {
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
+  // Animated values are created once and kept for the life of the panel.
+  const [spin] = useState(() => new Animated.Value(0));
+  const [slide] = useState(() => new Animated.Value(0));
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    let loops = [];
+    AccessibilityInfo.isReduceMotionEnabled().then((reduce) => {
+      if (reduce) return;
+      loops = [
+        Animated.loop(Animated.timing(spin, { toValue: 1, duration: 1600, easing: Easing.linear, useNativeDriver: true })),
+        Animated.loop(Animated.timing(slide, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: true })),
+      ];
+      loops.forEach((l) => l.start());
+    });
+    return () => loops.forEach((l) => l.stop());
+  }, [spin, slide]);
+  const ring = rs(44);
+  return (
+    <View
+      accessibilityRole="summary"
+      accessibilityLabel={`Request sent. Waiting for ${name} to accept`}
+      style={{ borderWidth: 1, borderColor: colors.cardLine, backgroundColor: colors.primarySurface, borderRadius: radius.lg + 2, paddingTop: spacing.md - 2, paddingHorizontal: spacing.md - 2, gap: spacing.md - 4, overflow: "hidden" }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 }}>
+        <View style={{ width: ring, height: ring, alignItems: "center", justifyContent: "center" }}>
+          <Animated.View
+            style={{ position: "absolute", width: ring, height: ring, borderRadius: ring / 2, borderWidth: 3, borderColor: "transparent", borderTopColor: colors.primary, transform: [{ rotate: spin.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "360deg"] }) }] }}
+          />
+          <View style={{ width: ring - rs(8), height: ring - rs(8), borderRadius: ring, backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="time-outline" size={rs(20)} color={colors.primary} />
+          </View>
+        </View>
+        <View style={{ flex: 1, gap: rs(2) }}>
+          <Text style={{ color: colors.text, fontWeight: "700", fontSize: rf(15.5) }}>Request sent</Text>
+          <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Waiting for {name} to accept</Text>
+        </View>
+        <Pressable onPress={onCancel} accessibilityRole="button" accessibilityLabel={`Cancel request to ${name}`} hitSlop={6} style={({ pressed }) => ({ paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: pressed ? colors.danger + "18" : "transparent" })}>
+          <Text style={{ color: colors.danger, fontWeight: "700", fontSize: rf(14) }}>Cancel</Text>
+        </Pressable>
+      </View>
+      {/* Thin line sliding along the bottom edge while waiting. */}
+      <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)} style={{ height: 3, marginHorizontal: -(spacing.md - 2), backgroundColor: colors.primary + "24", overflow: "hidden" }}>
+        <Animated.View style={{ width: width * 0.38, height: 3, borderRadius: 3, backgroundColor: colors.primary, transform: [{ translateX: slide.interpolate({ inputRange: [0, 1], outputRange: [-width * 0.38, width] }) }] }} />
+      </View>
+    </View>
+  );
+}
+
+// Walk → ride → walk, in one rounded pill with dashed joins.
+export function TripLegs({ host }) {
+  const { colors, spacing, rs, rf } = useTheme();
+  const vehicleIcon = host.type === "bike" ? "moped" : "car";
+  const seg = (text, icon, ride) => (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: rs(4) }}>
+      <Text style={{ color: ride ? colors.primary : colors.text, fontWeight: "700", fontSize: rf(15) }}>{text}</Text>
+      <MaterialCommunityIcons name={icon} size={rs(18)} color={ride ? colors.primary : colors.text} />
+    </View>
+  );
+  const dash = <View style={{ flex: 1, minWidth: rs(10), borderTopWidth: 1.5, borderStyle: "dashed", borderColor: colors.border }} />;
+  return (
+    <View
+      accessibilityLabel={`Walk ${host.walkTo}, ride ${host.ride}, walk ${host.walkFrom}`}
+      style={{ height: rs(46), borderWidth: 1, borderColor: colors.line, borderRadius: rs(23), flexDirection: "row", alignItems: "center", gap: spacing.sm, paddingHorizontal: spacing.md }}
+    >
+      {seg(host.walkTo, "walk")}
+      {dash}
+      {seg(host.ride, vehicleIcon, true)}
+      {dash}
+      {seg(host.walkFrom, "walk")}
+    </View>
+  );
+}
+
+// Default profile picture until someone adds a photo: a simple drawn person picked from their gender.
+// gender: "Female" | "Male"; anything else ("Prefer not to say", none) shows an empty placeholder, no picture. Drawn with plain Views, so no image files are needed.
+const LOOKS = {
+  Female: { bg: "#FCE7F3", shirt: "#BE185D", hair: "#2B1B12", long: true },
+  Male: { bg: "#DBEAFE", shirt: "#1D4ED8", hair: "#111827", long: false },
+  other: { bg: "#E5E7EB", shirt: "#6B7280", hair: "#374151", long: false },
+};
+export function PersonAvatar({ gender, size = 40 }) {
+  const { colors } = useTheme();
+  if (gender !== "Female" && gender !== "Male") {
+    return (
+      <View accessible={false} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name="person-outline" size={size * 0.46} color={colors.textMuted} />
+      </View>
+    );
+  }
+  const look = LOOKS[gender];
+  const s = size;
+  const skin = "#E0A983";
+  const at = (left, top, w, h, extra) => ({ position: "absolute", left: s * left, top: s * top, width: s * w, height: s * h, ...extra });
+  return (
+    <View accessible={false} style={{ width: s, height: s, borderRadius: s / 2, overflow: "hidden", backgroundColor: look.bg }}>
+      {look.long ? <View style={at(0.27, 0.19, 0.46, 0.52, { backgroundColor: look.hair, borderTopLeftRadius: s * 0.23, borderTopRightRadius: s * 0.23, borderBottomLeftRadius: s * 0.08, borderBottomRightRadius: s * 0.08 })} /> : null}
+      <View style={at(0.14, 0.7, 0.72, 0.5, { backgroundColor: look.shirt, borderRadius: s * 0.36 })} />
+      <View style={at(0.43, 0.54, 0.14, 0.18, { backgroundColor: skin, borderBottomLeftRadius: s * 0.07, borderBottomRightRadius: s * 0.07 })} />
+      <View style={at(0.32, 0.22, 0.36, 0.4, { backgroundColor: skin, borderRadius: s * 0.18 })} />
+      <View style={at(0.31, 0.18, 0.38, 0.17, { backgroundColor: look.hair, borderTopLeftRadius: s * 0.19, borderTopRightRadius: s * 0.19, borderBottomLeftRadius: s * (look.long ? 0.02 : 0.06), borderBottomRightRadius: s * 0.1 })} />
+      <View style={at(0.42, 0.41, 0.04, 0.04, { backgroundColor: "#1F2937", borderRadius: s })} />
+      <View style={at(0.54, 0.41, 0.04, 0.04, { backgroundColor: "#1F2937", borderRadius: s })} />
+      <View style={at(0.45, 0.49, 0.1, 0.05, { borderBottomWidth: Math.max(1, s * 0.018), borderColor: "#7C2D12", borderBottomLeftRadius: s * 0.05, borderBottomRightRadius: s * 0.05 })} />
+    </View>
+  );
+}
+
+// Shown on the ride card after the host accepts (instead of Request Ride), with a way to open the ride.
+export function RideConfirmed({ name, onOpen }) {
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
+  return (
+    <View accessibilityRole="summary" accessibilityLabel={`Seat confirmed with ${name}`} style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 4, borderWidth: 1, borderColor: colors.green + "55", backgroundColor: colors.greenSurface, borderRadius: radius.lg + 2, padding: spacing.md - 2 }}>
+      <View style={{ width: rs(40), height: rs(40), borderRadius: rs(20), backgroundColor: colors.green, alignItems: "center", justifyContent: "center" }}>
+        <Ionicons name="checkmark" size={rs(22)} color={colors.onGreen} />
+      </View>
+      <View style={{ flex: 1, gap: rs(2) }}>
+        <Text style={{ color: colors.text, fontWeight: "700", fontSize: rf(15.5) }}>Seat confirmed</Text>
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{name} accepted your request</Text>
+      </View>
+      <Pressable onPress={onOpen} accessibilityRole="button" hitSlop={6} style={({ pressed }) => ({ paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm, borderRadius: radius.md, backgroundColor: pressed ? colors.green + "22" : "transparent" })}>
+        <Text style={{ color: colors.green, fontWeight: "700", fontSize: rf(14) }}>View ride</Text>
+      </Pressable>
+    </View>
+  );
 }

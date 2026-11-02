@@ -56,8 +56,8 @@ const alert = (kind, title, text, extra) => ({ id: `n${++nextAlert}`, kind, titl
 const first = (name) => name.split(" ")[0];
 export const markRead = (id) => set({ alerts: state.alerts.map((a) => (id === undefined || a.id === id ? { ...a, read: true } : a)) });
 export const removeAlert = (id) => set({ alerts: state.alerts.filter((a) => a.id !== id) });
-const hostWho = (h) => ({ initials: h.initials, color: h.color });
-const guestWho = (r) => ({ initials: r.initials, color: "#7C3AED" });
+const hostWho = (h) => ({ initials: h.initials, color: h.color, gender: h.gender });
+const guestWho = (r) => ({ initials: r.initials, color: "#7C3AED", gender: r.gender });
 
 // ----- guest -----
 let answerTimer = null;

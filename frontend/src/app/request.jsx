@@ -112,7 +112,7 @@ export default function Request() {
           </View>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-            <Avatar initials={req.initials} color="#7C3AED" size={rs(52)} />
+            <Avatar initials={req.initials} gender={req.gender} color="#7C3AED" size={rs(52)} />
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: rs(6) }}>
                 <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.lg - 2 }}>{req.name}</Text>

@@ -34,20 +34,20 @@ export default function MyRides() {
         {waiting
           ? card(
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                <Avatar initials={booking.host.initials} color={booking.host.color} />
+                <Avatar initials={booking.host.initials} gender={booking.host.gender} color={booking.host.color} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.warning, fontWeight: "700" }}>Waiting for {booking.host.name.split(" ")[0]} to accept</Text>
                   <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Tomorrow · {booking.host.time} AM · {booking.pickup.name} → {booking.drop.short ?? booking.drop.name}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={rs(18)} color={colors.textMuted} />
               </View>,
-              () => router.push("/requested"),
+              () => router.push({ pathname: "/results", params: { to: booking.drop.name } }),
             )
           : null}
         {upcoming
           ? card(
               <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                <Avatar initials={booking.host.initials} color={booking.host.color} />
+                <Avatar initials={booking.host.initials} gender={booking.host.gender} color={booking.host.color} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: "700" }}>Tomorrow · {booking.host.time} AM</Text>
                   <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>With {booking.host.name} · {booking.pickup.name} → {booking.drop.short ?? booking.drop.name}</Text>

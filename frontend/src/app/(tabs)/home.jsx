@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Image, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Avatar, Plate } from "../../components/RideUI";
+import DrivingCar from "../../components/DrivingCar";
 import WhenSheet from "../../components/WhenSheet";
 import { useTheme } from "../../constants/theme";
 import { setRole } from "../../lib/api";
@@ -13,8 +14,6 @@ import { getSession, updateSession } from "../../lib/session";
 import { cancelPublished, confirmWithdraw, placeName, publishRide, receiveRequests, swapRoute, useTrips } from "../../lib/trips";
 import { useArea } from "../../lib/useArea";
 import { defaultWhen, whenLabel } from "../../lib/when";
-
-const carPhoto = require("../../../assets/images/onboarding/car.jpg");
 
 // ---------- small pieces ----------
 function Section({ title, action, onAction }) {
@@ -143,12 +142,12 @@ function FindView() {
       {waiting ? (
         <>
           <Section title="Upcoming" action="All rides" onAction={() => router.push("/rides")} />
-          <Pressable onPress={() => router.push("/requested")} accessibilityRole="button" style={{ borderRadius: radius.lg + 4, borderWidth: 1, borderColor: colors.line, padding: spacing.md, gap: spacing.md, backgroundColor: colors.background }}>
+          <Pressable onPress={() => router.push({ pathname: "/results", params: { to: waiting.drop.name } })} accessibilityRole="button" style={{ borderRadius: radius.lg + 4, borderWidth: 1, borderColor: colors.line, padding: spacing.md, gap: spacing.md, backgroundColor: colors.background }}>
             <View style={{ alignSelf: "flex-start", backgroundColor: colors.warningSurface, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 2, paddingVertical: rs(4) }}>
               <Text style={{ color: colors.warning, fontSize: rf(12), fontWeight: "800" }}>Request sent · waiting for {waiting.host.name.split(" ")[0]}</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-              <Avatar initials={waiting.host.initials} color={waiting.host.color} />
+              <Avatar initials={waiting.host.initials} gender={waiting.host.gender} color={waiting.host.color} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700" }}>{waiting.host.name}</Text>
                 <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>Leaves {waiting.host.time} AM · {waiting.pickup?.name ?? "your pickup"}</Text>
@@ -156,7 +155,7 @@ function FindView() {
               <Plate text={waiting.host.plate} />
             </View>
             <View style={{ flexDirection: "row", gap: spacing.sm }}>
-              <Pressable onPress={() => router.push("/requested")} accessibilityRole="button" style={{ flex: 1, backgroundColor: colors.ink, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
+              <Pressable onPress={() => router.push({ pathname: "/results", params: { to: waiting.drop.name } })} accessibilityRole="button" style={{ flex: 1, backgroundColor: colors.ink, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
                 <Text style={{ color: colors.onInk, fontWeight: "800" }}>View request</Text>
               </Pressable>
               <Pressable onPress={() => confirmWithdraw()} accessibilityRole="button" style={{ flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
@@ -173,7 +172,7 @@ function FindView() {
               <Text style={{ color: colors.green, fontSize: rf(12), fontWeight: "800" }}>Accepted · pickup {accepted.host.time} AM</Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-              <Avatar initials={accepted.host.initials} color={accepted.host.color} />
+              <Avatar initials={accepted.host.initials} gender={accepted.host.gender} color={accepted.host.color} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700" }}>{accepted.host.name}</Text>
                 <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{accepted.host.vehicle}</Text>
@@ -306,7 +305,7 @@ function OfferView({ vehicle }) {
           title={riding.status === "accepted" ? `You’re riding with ${riding.host.name.split(" ")[0]}` : `Waiting for ${riding.host.name.split(" ")[0]} to accept`}
           text="You can’t offer a ride while you have a seat booked. Cancel your booking first to host."
           action={riding.status === "accepted" ? "View my ride" : "View request"}
-          onAction={() => router.push(riding.status === "accepted" ? "/accepted" : "/requested")}
+          onAction={() => router.push(riding.status === "accepted" ? "/accepted" : { pathname: "/results", params: { to: riding.drop.name } })}
         />
       ) : (
         <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 4, overflow: "hidden" }}>
@@ -345,7 +344,7 @@ function OfferView({ vehicle }) {
           <View style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 4, padding: spacing.md, gap: spacing.md }}>
             {passengers.map((p) => (
               <View key={p.id} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-                <Avatar initials={p.initials} color="#7C3AED" />
+                <Avatar initials={p.initials} gender={p.gender} color="#7C3AED" />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: colors.text, fontWeight: "700", fontSize: fontSize.md }}>{p.name}</Text>
                   <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>Pickup {p.pickupTime} · {p.pickup}</Text>
@@ -372,7 +371,7 @@ function OfferView({ vehicle }) {
             accessibilityLabel={`Seat request from ${r.name}`}
             style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg + 2, padding: spacing.md }}
           >
-            <Avatar initials={r.initials} color="#7C3AED" />
+            <Avatar initials={r.initials} gender={r.gender} color="#7C3AED" />
             <View style={{ flex: 1 }}>
               <Text style={{ color: colors.text, fontWeight: "700", fontSize: fontSize.md }}>{r.name}</Text>
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{r.rides} rides · {r.pickup} · {r.pickupTime}</Text>
@@ -404,9 +403,9 @@ function NoVehicleSheet({ visible, onClose }) {
       <Pressable style={{ flex: 1, backgroundColor: colors.scrim }} onPress={onClose} accessibilityLabel="Close" />
       <View style={{ backgroundColor: colors.background, borderTopLeftRadius: rs(26), borderTopRightRadius: rs(26), padding: spacing.lg, paddingBottom: insets.bottom + spacing.lg, gap: spacing.md }}>
         <View style={{ alignSelf: "center", width: rs(40), height: rs(4), borderRadius: rs(4), backgroundColor: colors.line }} />
-        <Image source={carPhoto} style={{ width: "100%", height: rs(130), borderRadius: radius.lg }} resizeMode="cover" accessible={false} />
+        <DrivingCar radius={radius.lg} />
         <Text style={{ color: colors.text, fontSize: fontSize.xl - 6, fontWeight: "800" }}>Add your vehicle to offer rides</Text>
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>Tell us about your bike or car once. About 2 minutes, and we can read it from your RC.</Text>
+        <Text style={{ color: colors.textMuted, fontSize: fontSize.md, lineHeight: rf(22) }}>Tell us about your car or bike.</Text>
         <Pressable
           onPress={() => {
             onClose();

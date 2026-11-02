@@ -36,7 +36,12 @@ export const colors = {
     greenSurface: "#E6F6EE",
     line: "#ECEDEF",
     danger: "#DC2626",
-    route: "#0A0A0A",
+    route: "#1D4ED8", // ride line on every map (Cpool blue)
+    // Ride results cards: soft blue border, 3D button edge, purple for a spare helmet
+    cardLine: "#D6E2F5",
+    primaryEdge: "#1E3A8A",
+    purple: "#6D28D9",
+    purpleSurface: "#F1EBFF",
   },
   dark: {
     background: "#0B0F14",
@@ -69,7 +74,11 @@ export const colors = {
     greenSurface: "#0B2A1E",
     line: "#2A2A2E",
     danger: "#EF4444",
-    route: "#F5F5F7",
+    route: "#60A5FA",
+    cardLine: "#1E2B40",
+    primaryEdge: "#1E40AF",
+    purple: "#A78BFA",
+    purpleSurface: "#221A38",
   },
 };
 
@@ -80,8 +89,10 @@ export const fontSize = { sm: 13, md: 16, lg: 20, xl: 28, xxl: 32 };
 export const radius = { md: 10, lg: 16, pill: 999 };
 
 // Appearance chosen in Account: "system" follows the phone, "light" / "dark" override it for the whole app.
-// shortcut: kept in memory, so it resets to "system" when the app restarts; save it with AsyncStorage if people ask.
-let appearance = "system";
+// The app starts in light; people can switch in Account → Appearance.
+// shortcut: kept in memory, so it resets to light when the app restarts; save it with AsyncStorage if people ask.
+let appearance = "light";
+Appearance.setColorScheme("light");
 export const getAppearance = () => appearance;
 export function setAppearance(mode) {
   appearance = mode;
