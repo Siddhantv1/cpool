@@ -4,7 +4,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 
 ## Current state
 
-### Frontend (Claude-A), updated 2026-10-31
+### Frontend (Claude-A), updated 2026-11-02
 
 - **Stack:** Expo SDK 58, React Native 0.88, JavaScript, Expo Router (`frontend/src/app`), Mapbox (`@rnmapbox/maps`). Android dev build tested on real phones; iOS not tested.
 - **All data is example data in the app** (`frontend/src/lib/mock.js`, state in `frontend/src/lib/trips.js`). `frontend/src/lib/api.js` has fake auth functions; each has a comment showing the real route it should call.
@@ -38,7 +38,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 - **Ride line on every map is blue** (`colors.route` in `frontend/src/constants/theme.js`); See on map also shows the price next to Request Ride. No API change.
 - **Default appearance is light** (`frontend/src/constants/theme.js`); Account → Appearance can still switch to dark or system.
 - **Example names have no trailing dot** (“Anfia”, “Meera J”); an example bike host without a spare helmet (Rahul K) was added to `frontend/src/lib/mock.js`.
-- **Time picker (`frontend/src/components/WhenSheet.jsx`):** day chips (today + 6 days), then a clock dial: tap the hour, then the minute (5-minute steps), AM/PM toggle. At least 10 minutes from now. Used for “Find a ride” scheduling and “Offer a ride”. Sends a plain `Date`; no API change.
+- **Time picker (`frontend/src/components/WhenSheet.jsx`):** day chips (today + 6 days), then a clock dial: tap the hour, then the minute (5-minute steps), AM/PM toggle. Animated: the hand sweeps the short way to the number, the big numbers roll, the highlight slides, the face fades between hours and minutes; you can also drag a finger round the dial (built-in Animated + touch responder, no new package; no motion when Remove animations is on). At least 10 minutes from now. Used for “Find a ride” scheduling and “Offer a ride”. Sends a plain `Date`; no API change.
 - **Responsive:** sizes scale with screen width via `rs()` / `rf()` from `useTheme()` (`frontend/src/constants/theme.js`).
 
 ---
