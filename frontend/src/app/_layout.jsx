@@ -9,6 +9,10 @@ import { answerRequest } from "../lib/trips";
 
 // Accept / Decline on a seat-request notification; if the ride is already full, open the request instead.
 function onNotificationAction(id, data) {
+  if (id === "incar") {
+    router.push("/riding");
+    return true;
+  }
   if (id !== "accept" && id !== "decline") return false;
   if (answerRequest(data.reqId, id === "accept")) router.push("/home");
   else router.push({ pathname: "/request", params: { id: data.reqId } });

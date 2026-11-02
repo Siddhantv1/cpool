@@ -36,7 +36,7 @@ export default function NotifyAsk() {
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{copy.preview[1]}</Text>
           </View>
         </View>
-        {button("Turn on notifications", turnOn, true)}
+        {button(copy.button ?? "Turn on notifications", turnOn, true)}
         {button("Not now", close)}
       </View>
     </Modal>

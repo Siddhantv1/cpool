@@ -18,6 +18,7 @@ const BUTTONS = {
   "seat-request": [["accept", "Accept"], ["decline", "Decline"]],
   "pickup-reminder": [["walk", "Walk directions"], ["track", "Track ride"]],
   "leave-reminder": [["start", "Start ride"]],
+  arrived: [["incar", "I’m in the car"], ["call", "Call"]],
   find: [["find", "Find a ride"]],
 };
 const REMIND_MIN = 15;
@@ -32,6 +33,9 @@ Notifications.setNotificationHandler({
 // Once at start-up: channels and button sets.
 export async function setupNotifications() {
   try {
+    // shortcut: the example rides start empty on every launch, so reminders from an earlier run are stale.
+    // With the backend, reschedule them from GET /v1/me/trip after it loads instead.
+    await Notifications.cancelAllScheduledNotificationsAsync();
     if (Platform.OS === "android") {
       await Promise.all(Object.entries(CHANNELS).map(([id, [name, description]]) => Notifications.setNotificationChannelAsync(id, { name, description, importance: AndroidImportance.HIGH })));
     }
@@ -48,19 +52,13 @@ export function alertNow(channel, content) {
 }
 
 // Scheduled with Android itself, so it arrives on time even when the phone has paused Cpool in the background.
-// One per key; scheduling the same key again replaces it.
-const scheduled = {};
+// The key is the notification's id: scheduling it again replaces it, and it can be cancelled even after the app restarts.
 async function schedule(key, content, trigger) {
-  await cancelScheduled(key);
   try {
-    scheduled[key] = await Notifications.scheduleNotificationAsync({ content, trigger });
+    await Notifications.scheduleNotificationAsync({ identifier: key, content, trigger });
   } catch {}
 }
-export async function cancelScheduled(key) {
-  const id = scheduled[key];
-  delete scheduled[key];
-  if (id) await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
-}
+export const cancelScheduled = (key) => Notifications.cancelScheduledNotificationAsync(key).catch(() => {});
 // "Pickup in 15 min" / "Leave in 15 min".
 export function remind(key, at, content) {
   const date = new Date(new Date(at).getTime() - REMIND_MIN * 60000);
@@ -72,15 +70,19 @@ export function alertIn(key, channel, seconds, content) {
   return schedule(key, content, { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: channel });
 }
 
-// Asks for permission once per app start, at the moment it makes sense (first request or publish). copy: { title, text, preview }
+// Asks once per app start, at the moment it makes sense (first request or publish). copy: { title, text, preview, button? }
+// Already allowed: asks for exact alarms instead, or Android may deliver a reminder up to an hour late.
+const EXACT = { title: "Get reminders on time", text: "Allow “Alarms & reminders” so the 15-minute reminder arrives exactly on time.", preview: ["Pickup in 15 min", "Walk to the meet point"], button: "Allow alarms & reminders" };
 let asked = false;
 const askers = new Set();
+const exactAllowed = async () => Platform.OS !== "android" || ((await Notifications.getExactAlarmPermissionsAsync().catch(() => null))?.granted ?? true);
 export async function maybeAskForNotifications(copy) {
   if (asked) return;
   asked = true;
   const p = await Notifications.getPermissionsAsync().catch(() => null);
-  if (!p || p.granted || !p.canAskAgain) return;
-  askers.forEach((fn) => fn(copy));
+  if (!p) return;
+  if (!p.granted) return void (p.canAskAgain && askers.forEach((fn) => fn(copy)));
+  if (!(await exactAllowed())) askers.forEach((fn) => fn(EXACT));
 }
 export function useNotificationAsk() {
   const [copy, setCopy] = useState(null);
@@ -90,7 +92,12 @@ export function useNotificationAsk() {
   }, []);
   return [copy, () => setCopy(null)];
 }
-export const requestNotificationPermission = () => Notifications.requestPermissionsAsync().catch(() => null);
+// Notifications first (Android's own "Allow?" box), then the "Alarms & reminders" settings page if exact alarms are off.
+export async function requestNotificationPermission() {
+  const p = await Notifications.requestPermissionsAsync().catch(() => null);
+  if (p?.granted && !(await exactAllowed())) await Notifications.requestExactAlarmPermissionsAsync().catch(() => {});
+  return p;
+}
 
 // Tapping a notification or one of its buttons. onAction(id, data) handles buttons that change ride state.
 export function useNotificationTaps(onAction) {
