@@ -10,6 +10,7 @@ import { useTheme } from "../../constants/theme";
 import { setRole } from "../../lib/api";
 import { OFFICES } from "../../lib/mock";
 import { resetDraft } from "../../lib/onboarding";
+import { maybeAskForNotifications } from "../../lib/notify";
 import { getSession, updateSession } from "../../lib/session";
 import { cancelPublished, confirmWithdraw, placeName, publishRide, receiveRequests, swapRoute, useTrips } from "../../lib/trips";
 import { useArea } from "../../lib/useArea";
@@ -256,6 +257,7 @@ function OfferView({ vehicle }) {
     publishRide({ from: places.from, to: places.to, when: whenLabel(when), at: when, seats });
     // shortcut: example requests arrive a few seconds after publishing; real ones come from the backend as push notifications.
     timer.current = setTimeout(receiveRequests, 4000);
+    maybeAskForNotifications({ title: "Know when colleagues ask for a seat", text: "Accept or decline right from the notification, and get a reminder when it’s time to leave.", preview: ["A colleague asked for a seat", "Accept or decline from here"] });
   }
 
   const pickPlace = (pick) => router.push({ pathname: "/places", params: { pick } });
@@ -295,7 +297,7 @@ function OfferView({ vehicle }) {
               <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{placeName(published.from)} → {placeName(published.to)}</Text>
             </View>
           </View>
-          <Pressable onPress={onCancelRide} accessibilityRole="button" style={{ borderWidth: 1.5, borderColor: colors.danger, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
+          <Pressable onPress={onCancelRide} accessibilityRole="button" accessibilityLabel="Cancel ride" style={{ borderWidth: 1.5, borderColor: colors.danger, borderRadius: radius.lg, paddingVertical: spacing.sm + 4, alignItems: "center" }}>
             <Text style={{ color: colors.danger, fontWeight: "800" }}>Cancel ride</Text>
           </Pressable>
         </View>
@@ -320,7 +322,7 @@ function OfferView({ vehicle }) {
           )}
           {row(dot(true), "Going to", placeName(places.to), <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: rf(12) }}>Change</Text>, () => pickPlace("to"))}
           {row(<Ionicons name="calendar-outline" size={rs(18)} color={colors.text} />, "When", whenLabel(when), <Text style={{ color: colors.textMuted, fontWeight: "700", fontSize: rf(12) }}>Change</Text>, () => setPicking(true), true)}
-          <Pressable onPress={onPublish} accessibilityRole="button" style={({ pressed }) => ({ backgroundColor: colors.green, paddingVertical: spacing.md, alignItems: "center", opacity: pressed ? 0.85 : 1 })}>
+          <Pressable onPress={onPublish} accessibilityRole="button" accessibilityLabel="Publish ride" style={({ pressed }) => ({ backgroundColor: colors.green, paddingVertical: spacing.md, alignItems: "center", opacity: pressed ? 0.85 : 1 })}>
             <Text style={{ color: colors.onGreen, fontWeight: "800", fontSize: fontSize.md }}>Publish ride</Text>
           </Pressable>
         </View>
@@ -385,7 +387,7 @@ function OfferView({ vehicle }) {
           <View style={{ flex: 1 }}>
             <Text style={{ color: colors.text, fontWeight: "700" }}>No requests yet</Text>
             <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>
-              {published ? "Waiting for colleagues on your route." : "Publish a ride and colleagues on your route can ask for your seat."}
+              {published ? (passengers.length >= rideSeats ? "Your ride is full, so new requests can’t be accepted." : "Waiting for colleagues on your route.") : "Publish a ride and colleagues on your route can ask for your seat."}
             </Text>
           </View>
         </View>
@@ -459,6 +461,7 @@ export default function Home() {
       key={key}
       onPress={() => switchMode(key)}
       accessibilityRole="tab"
+      accessibilityLabel={label}
       accessibilityState={{ selected: mode === key }}
       style={{ flex: 1, alignItems: "center", paddingVertical: spacing.sm + 4, borderBottomWidth: 3, borderBottomColor: mode === key ? colors.ink : "transparent", flexDirection: "row", justifyContent: "center", gap: rs(6) }}
     >

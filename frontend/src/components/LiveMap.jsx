@@ -137,8 +137,14 @@ export default function LiveMap({ route, done, pins = [], vehicle, walks = [], p
       Alert.alert("Couldn’t find you", "Check that location is turned on, then try again.");
     }
   }
-  // The bottom card shows the recenter button (see MapSheet); tell it what to do.
-  useEffect(() => (view ? registerMap({ onMe, recenter }) : undefined));
+  // The bottom card shows the recenter button (see MapSheet); tell it what to do. Registered again only when the
+  // framing or onMe changes, not on every render: on ride screens the car moves ~8 times a second, and re-registering
+  // each time re-rendered the card in a loop ("Maximum update depth exceeded").
+  const latestRecenter = useRef(recenter);
+  useEffect(() => {
+    latestRecenter.current = recenter;
+  });
+  useEffect(() => (view ? registerMap({ onMe, recenter: () => latestRecenter.current() }) : undefined), [view, onMe]);
 
   if (!hasMapboxToken) return <NoMapToken />;
   if (!route) {

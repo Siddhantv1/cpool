@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, Switch, Text, View } from "react-native";
+import { Alert, Image, Linking, Pressable, ScrollView, Switch, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PersonAvatar } from "../../components/RideUI";
 import { getAppearance, setAppearance, useTheme } from "../../constants/theme";
@@ -30,7 +30,8 @@ function Group({ title, action, onAction, children }) {
   );
 }
 
-function Row({ icon, mc, title, subtitle, right, onPress, badge }) {
+// danger = red row (Delete account).
+function Row({ icon, mc, title, subtitle, right, onPress, badge, danger }) {
   const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
   return (
     <Pressable
@@ -39,12 +40,12 @@ function Row({ icon, mc, title, subtitle, right, onPress, badge }) {
       accessibilityRole={onPress ? "button" : undefined}
       style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: spacing.md, paddingVertical: spacing.sm + 4, borderBottomWidth: 1, borderBottomColor: colors.line, opacity: pressed ? 0.7 : 1 })}
     >
-      <View style={{ width: rs(36), height: rs(36), borderRadius: radius.md, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-        {mc ? <MaterialCommunityIcons name={icon} size={rs(19)} color={colors.text} /> : <Ionicons name={icon} size={rs(18)} color={colors.text} />}
+      <View style={{ width: rs(36), height: rs(36), borderRadius: radius.md, backgroundColor: danger ? colors.danger + "14" : colors.surface, alignItems: "center", justifyContent: "center" }}>
+        {mc ? <MaterialCommunityIcons name={icon} size={rs(19)} color={danger ? colors.danger : colors.text} /> : <Ionicons name={icon} size={rs(18)} color={danger ? colors.danger : colors.text} />}
       </View>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: rs(6) }}>
-          <Text style={{ color: colors.text, fontWeight: "600", fontSize: fontSize.md }}>{title}</Text>
+          <Text style={{ color: danger ? colors.danger : colors.text, fontWeight: "600", fontSize: fontSize.md }}>{title}</Text>
           {badge ? (
             <Text style={{ color: colors.green, backgroundColor: colors.greenSurface, fontSize: rf(10), fontWeight: "800", paddingHorizontal: rs(7), paddingVertical: 2, borderRadius: rs(999), overflow: "hidden" }}>{badge}</Text>
           ) : null}
@@ -197,7 +198,7 @@ export default function Account() {
             subtitle="Ride accepted, cancelled, host nearby"
             right={<Switch value={!session.soundsOff} onValueChange={(on) => set({ soundsOff: !on })} accessibilityLabel="Sounds and vibration" />}
           />
-          <Row icon="notifications-outline" title="Notifications" right={<Text style={{ color: colors.textMuted }}>On</Text>} onPress={soon("Notification settings")} />
+          <Row icon="notifications-outline" title="Notifications" subtitle="Choose which alerts you get" onPress={() => Linking.openSettings()} />
           <Row
             icon="moon-outline"
             title="Appearance"
@@ -224,6 +225,7 @@ export default function Account() {
           <Row icon="key-outline" title="Change password" onPress={() => router.push("/change-password")} />
           <Row icon="lock-closed-outline" title="Privacy & data" onPress={soon("Privacy settings")} />
           <Row icon="help-circle-outline" title="Help & support" onPress={soon("Help & support")} />
+          <Row icon="trash-outline" title="Delete account" danger onPress={() => router.push("/delete-account")} />
         </Group>
 
         <Pressable onPress={logOut} accessibilityRole="button" style={{ alignItems: "center", paddingVertical: spacing.sm }}>

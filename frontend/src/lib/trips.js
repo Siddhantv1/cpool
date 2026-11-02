@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { playAlert } from "./alerts";
+import { alertIn, alertNow, cancelScheduled, remind } from "./notify";
 import { ALERTS, HOME, HOSTS, MEET_POINT, OFFICES, REQUESTS } from "./mock";
 
 let state = {
@@ -70,16 +71,41 @@ export function myPickup(area) {
 
 // drop: the office you're going to; pickup: from myPickup().
 export function bookRide(hostId, drop = OFFICES[0], pickup = myPickup()) {
-  set({ booking: { host: hostById(hostId), pickup, drop, status: "requested", at: Date.now() } });
+  const host = hostById(hostId);
+  set({ booking: { host, pickup, drop, status: "requested", at: Date.now() } });
+  alertIn("answer", "ride", 8, { title: `${first(host.name)} accepted your request`, body: `Tomorrow ${host.time} AM · meet near ${pickup.name}`, categoryIdentifier: "ride-accepted", data: { url: "/accepted", phone: host.phone } });
   // shortcut: the example host accepts after 8 s; really the answer arrives as a push notification from the backend.
   answerTimer = setTimeout(() => {
     acceptBooking();
     playAlert("accepted");
   }, 8000);
 }
+// Tomorrow at the host's time ("8:35"), the day the example rides run.
+function pickupAt(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const at = new Date();
+  at.setDate(at.getDate() + 1);
+  at.setHours(h, m, 0, 0);
+  return at;
+}
+const walkUrl = ([lng, lat]) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+
 function setBooking(status, kind, title, text, reason) {
   if (!state.booking) return;
   clearTimeout(answerTimer);
+  const b = state.booking;
+  if (status === "accepted") {
+    remind("pickup", pickupAt(b.host.time), {
+      title: "Pickup in 15 min",
+      body: `Walk to the meet point near ${b.pickup.name}. ${first(b.host.name)} · ${b.host.time} AM · ${b.host.plate}`,
+      categoryIdentifier: "pickup-reminder",
+      data: { url: "/coming", walkUrl: walkUrl(b.pickup.coords) },
+    });
+  } else {
+    cancelScheduled("pickup");
+    cancelScheduled("answer");
+    if (status !== "withdrawn") alertNow("ride", { title, body: text, categoryIdentifier: "find", data: { url: "/results" } });
+  }
   set({ booking: { ...state.booking, status, reason }, alerts: [alert(kind, title, text, { who: hostWho(state.booking.host), cta: ["declined", "cancelled"].includes(status) ? "find" : undefined }), ...state.alerts] });
 }
 const acceptBooking = () =>
@@ -103,6 +129,9 @@ export function confirmWithdraw(onDone) {
       text: "Withdraw",
       style: "destructive",
       onPress: () => {
+        if (state.booking?.status !== "requested") {
+          return Alert.alert(`${first} already accepted`, "Your seat is confirmed. To cancel, open the ride and tap Cancel ride.");
+        }
         withdrawBooking();
         clearBooking();
         onDone?.();
@@ -113,6 +142,8 @@ export function confirmWithdraw(onDone) {
 
 export function clearBooking() {
   clearTimeout(answerTimer);
+  cancelScheduled("pickup");
+  cancelScheduled("answer");
   set({ booking: null });
 }
 
@@ -120,6 +151,15 @@ export function clearBooking() {
 // ride: { from, to, when, at, seats } (seats = free seats in your vehicle: car seats, or 1 on a bike)
 export function publishRide(ride) {
   set({ published: ride, requests: [], passengers: [] });
+  REQUESTS.forEach((r) =>
+    alertIn(`request-${r.id}`, "requests", 4, {
+      title: `${first(r.name)} asked for a seat`,
+      body: `${r.pickupTime} · ${r.pickup} · ${r.rides} rides`,
+      categoryIdentifier: "seat-request",
+      data: { url: { pathname: "/request", params: { id: r.id } }, reqId: r.id },
+    }),
+  );
+  remind("leave", ride.at, { title: "Leave in 15 min", body: `Your ride to ${placeName(ride.to)} · ${ride.when}`, categoryIdentifier: "leave-reminder", data: { url: "/drive" } });
 }
 // Example: colleagues' requests come in shortly after publishing.
 export const receiveRequests = () =>
@@ -134,8 +174,13 @@ export function answerRequest(id, accept) {
 }
 export function cancelPublished() {
   if (!state.published) return;
+  cancelScheduled("leave");
+  REQUESTS.forEach((r) => cancelScheduled(`request-${r.id}`));
   const guests = state.passengers;
   const text = guests.length ? `${guests.map((p) => first(p.name)).join(", ")} ${guests.length === 1 ? "has" : "have"} been told` : "No one had booked yet";
   set({ published: null, passengers: [], requests: [], alerts: [alert("cancelled", `You cancelled your ride · ${state.published.when}`, text, guests.length ? { who: guestWho(guests[0]) } : {}), ...state.alerts] });
 }
-export const finishHosting = () => set({ published: null, passengers: [], requests: [] });
+export function finishHosting() {
+  cancelScheduled("leave");
+  set({ published: null, passengers: [], requests: [] });
+}

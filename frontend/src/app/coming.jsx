@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Redirect, router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
@@ -9,11 +9,14 @@ import { useTheme } from "../constants/theme";
 import { playAlert } from "../lib/alerts";
 import { useMeetRoute, useRoute, walkLabel } from "../lib/directions";
 import { km } from "../lib/route";
+import { endLiveRide, showLiveRide, vehicleColour } from "../lib/live";
+import { alertIn, cancelScheduled } from "../lib/notify";
 import { useTrips } from "../lib/trips";
 import { useMeetCheck } from "../lib/useMeetCheck";
 import { useMovement } from "../lib/useMovement";
 
 const NEARBY_KM = 0.5;
+const DRIVE_MS = 20000; // shortcut: simulated drive to your pickup
 
 // The host is driving to your pickup point.
 export default function Coming() {
@@ -30,7 +33,7 @@ export default function Coming() {
   // Your phone's GPS: how far you are from the meet point, and whether you've reached it.
   const check = useMeetCheck(needsWalk ? meet : null);
   // shortcut: the host's position is simulated along the real route; use GET /v1/rides/{id}/live when the backend is ready.
-  const move = useMovement(leg?.coords ?? null, 20000, {
+  const move = useMovement(leg?.coords ?? null, DRIVE_MS, {
     nearAt: leg ? Math.max(0, 1 - NEARBY_KM / leg.km) : 0.8,
     onNear: () => {
       setPhase("nearby");
@@ -38,6 +41,36 @@ export default function Coming() {
     },
     onArrive: () => setPhase("arrived"),
   });
+  // The live ride card in the notification shade: updated every 5% of the drive, removed when you leave this screen.
+  const host = booking?.host;
+  const step = leg ? Math.floor(move.t * 20) * 5 : null;
+  const minsAway = leg ? Math.max(1, Math.round(leg.minutes * (1 - move.t))) : null;
+  useEffect(() => {
+    if (!host || step == null) return;
+    const name = host.name.split(" ")[0];
+    const here = phase === "arrived";
+    showLiveRide({
+      title: here ? `${name} has arrived` : `${name} is ${minsAway} min away`,
+      text: `${host.vehicle} · ${host.plate}`,
+      chip: here ? "Here" : `${minsAway} min`,
+      progress: here ? 100 : step,
+      vehicle: host.type,
+      color: vehicleColour(host.vehicle),
+      phone: host.phone,
+      share: `I'm riding with ${host.name} (${host.plate}). Track me on Cpool.`,
+    });
+  }, [host, step, minsAway, phase]);
+  useEffect(() => endLiveRide, []);
+  // "Has arrived" alert for when you're in another app. Scheduled with Android when the drive starts, because the phone
+  // may pause Cpool in the background; cancelled if you leave this screen first.
+  const driving = !!leg;
+  useEffect(() => {
+    if (!driving || !host) return;
+    alertIn("arrived", "ride", DRIVE_MS / 1000, { title: `${host.name.split(" ")[0]} has arrived`, body: `Look for ${host.plate} · ${host.vehicle}`, categoryIdentifier: "arrived", data: { url: "/coming", phone: host.phone } });
+    return () => {
+      cancelScheduled("arrived");
+    };
+  }, [driving, host]);
   if (!booking) return <Redirect href="/home" />;
   const h = booking.host;
   const first = h.name.split(" ")[0];

@@ -40,4 +40,9 @@ yarn-error.*
 /ios
 /android
 
-.cladue 
+.cladue
+
+# local Expo modules: generated build output (never commit)
+modules/*/android/build/
+modules/*/android/.cxx/
+modules/*/android/.gradle/

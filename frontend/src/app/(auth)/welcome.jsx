@@ -1,4 +1,5 @@
-import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useLocalSearchParams } from "expo-router";
 import { Image, Text, View } from "react-native";
 import Button from "../../components/Button";
 import Screen from "../../components/Screen";
@@ -7,7 +8,8 @@ import { useTheme } from "../../constants/theme";
 const logo = require("../../../assets/images/logo.png");
 
 export default function Welcome() {
-  const { colors, spacing, fontSize, rs, rf } = useTheme();
+  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
+  const { notice } = useLocalSearchParams(); // e.g. "Your account has been deleted."
   const big = { fontSize: rf(56), lineHeight: rf(60), fontWeight: "800", color: colors.text };
 
   return (
@@ -23,6 +25,12 @@ export default function Welcome() {
         <Image source={logo} style={{ width: rs(40), height: rs(40) }} accessible={false} />
         <Text style={{ color: colors.text, fontSize: fontSize.lg, fontWeight: "800" }}>Cpool</Text>
       </View>
+      {notice ? (
+        <View accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: colors.greenSurface, borderRadius: radius.lg, padding: spacing.md }}>
+          <Ionicons name="checkmark-circle" size={rs(20)} color={colors.green} />
+          <Text style={{ flex: 1, color: colors.green, fontWeight: "600" }}>{notice}</Text>
+        </View>
+      ) : null}
 
       <View style={{ flex: 1, justifyContent: "center", gap: spacing.md }}>
         <Text accessibilityRole="header" accessibilityLabel="Ride. Share. Save.">

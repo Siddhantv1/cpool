@@ -139,6 +139,7 @@ export function ActionRow({ left, right }) {
       key={b.title}
       onPress={b.onPress}
       accessibilityRole="button"
+      accessibilityLabel={b.title}
       style={({ pressed }) => ({
         flex: strong && b.wide ? 2 : 1,
         flexDirection: "row",

@@ -39,7 +39,8 @@ export async function forgotPassword(email) {
 // POST /v1/auth/verify {email, code, purpose: "signup" | "reset"} -> {token}
 export async function verifyCode(email, code, purpose) {
   await wait();
-  if (code !== FAKE_CODE) throw new Error("That code is wrong. Check your email and try again.");
+  const noAccount = purpose === "reset" && !users.has(normalize(email)); // the backend never sent this email a code
+  if (code !== FAKE_CODE || noAccount) throw new Error("That code is wrong. Check your email and try again.");
   return { token: `${purpose}:${normalize(email)}` };
 }
 
@@ -54,6 +55,8 @@ export async function setPassword(token, password, phone, gender) {
   if (purpose === "signup") {
     if (!isMobile(phone ?? "")) throw new Error("Enter your 10-digit mobile number.");
     profiles.set(email, { ...profiles.get(email), phone: `+91${phone}`, gender: gender ?? null });
+  } else if (!users.has(email)) {
+    throw new Error("No account found for this email.");
   }
   users.set(email, password);
   return { ok: true };
@@ -103,6 +106,17 @@ export async function addVehicle(email, vehicle) {
   }
   plates.set(vehicle.number, normalize(email));
   profiles.set(normalize(email), { ...profiles.get(normalize(email)), vehicle });
+  return { ok: true };
+}
+
+// POST /v1/me/delete {password} → { ok }: deletes the account and frees its number plates. Error code "wrong_password".
+export async function deleteAccount(email, password) {
+  await wait();
+  const key = normalize(email);
+  if (users.get(key) !== password) throw Object.assign(new Error("That password is wrong. Try again."), { code: "wrong_password" });
+  users.delete(key);
+  profiles.delete(key);
+  plates.forEach((owner, plate) => owner === key && plates.delete(plate));
   return { ok: true };
 }
 

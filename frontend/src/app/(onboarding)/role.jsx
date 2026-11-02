@@ -110,7 +110,7 @@ export default function Role() {
         onPress={chooseHost}
       />
       {error ? <Text style={{ color: colors.error, fontSize: fontSize.sm }}>{error}</Text> : null}
-      <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, textAlign: "center", marginTop: "auto" }}>You can change this later in Profile.</Text>
+      <Text style={{ color: colors.textMuted, fontSize: fontSize.sm, textAlign: "center", marginTop: "auto" }}>You can change this later in Account.</Text>
     </Screen>
   );
 }
