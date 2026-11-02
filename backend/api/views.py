@@ -10,7 +10,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core import signing
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, inline_serializer
@@ -318,8 +318,27 @@ def vehicles(request):
         return Response(VehicleSerializer(request.user.active_vehicles(), many=True).data)
     s = VehicleSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    s.save(owner=request.user)
+    save_vehicle(s, request.user)
     return Response(s.data, status=201)
+
+
+def plate_taken(mine):
+    return ApiError("vehicle_exists", "You’ve already added this vehicle." if mine else
+                    "This vehicle is already registered on Cpool. If it’s yours, contact the Cpool admin.", 409)
+
+
+def save_vehicle(serializer, user):
+    """Save a new or edited vehicle, refusing a plate that's already on an active account (anyone's)."""
+    number = serializer.validated_data.get("number")
+    if number:
+        clash = Vehicle.objects.filter(number=number, removed=False).exclude(pk=getattr(serializer.instance, "pk", None)).first()
+        if clash:
+            raise plate_taken(clash.owner_id == user.id)
+    try:
+        with transaction.atomic():
+            serializer.save() if serializer.instance else serializer.save(owner=user)
+    except IntegrityError:  # someone registered it at the same moment
+        raise plate_taken(False)
 
 
 def my_vehicle(request, vehicle_id, editing=True):
@@ -341,7 +360,7 @@ def vehicle(request, vehicle_id):
         return ok()
     s = VehicleSerializer(v, data=request.data, partial=True)
     s.is_valid(raise_exception=True)
-    s.save()
+    save_vehicle(s, request.user)
     return Response(s.data)
 
 

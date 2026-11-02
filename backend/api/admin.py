@@ -40,8 +40,8 @@ class RideAdmin(admin.ModelAdmin):
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display = ["id", "guest", "ride", "status", "meet_name", "created"]
-    list_filter = ["status"]
+    list_display = ["id", "guest", "ride", "status", "host_confirmed_at", "guest_confirmed_at", "flagged", "created"]
+    list_filter = ["status", "flagged"]
 
 
 @admin.register(Sos)

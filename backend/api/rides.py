@@ -165,6 +165,8 @@ def guest_view(booking):
         "id": booking.id,
         "status": booking.status,
         "reason": booking.reason,
+        "hostConfirmed": booking.host_confirmed_at is not None,
+        "guestConfirmed": booking.guest_confirmed_at is not None,
         "meetPoint": booking.meet,
         "meetName": booking.meet_name,
         "createdAt": booking.created,
@@ -199,6 +201,8 @@ def host_view(ride):
         "bookings": [{
             "id": b.id,
             "status": b.status,
+            "hostConfirmed": b.host_confirmed_at is not None,
+            "guestConfirmed": b.guest_confirmed_at is not None,
             "meetPoint": b.meet,
             "meetName": b.meet_name,
             "alongKm": round(geo.nearest(ride.route, b.meet)[2], 2),  # how far along your route this guest is: sort by it to drive pickups in order
@@ -314,7 +318,10 @@ def complete_ride(request, ride_id):
     with transaction.atomic():
         move(Ride.objects.filter(pk=ride.pk), "completed", ["started"], "Start the ride before completing it.")
         ride.bookings.filter(status="requested").update(status="declined", reason="The ride has ended")
-        ride.bookings.filter(status="accepted").update(status="no_show")  # never marked as picked up
+        # Only one of them confirmed: still counts as picked up (the booking keeps showing who confirmed, for the admin).
+        on_board = ride.bookings.filter(status="accepted").exclude(host_confirmed_at=None, guest_confirmed_at=None)
+        on_board.update(status="picked_up")
+        ride.bookings.filter(status="accepted").update(status="no_show")  # neither confirmed
     ride.refresh_from_db()
     return Response(host_view(ride))
 
@@ -408,21 +415,52 @@ def cancel_booking(request, booking_id):
     return Response(guest_view(booking))
 
 
-def mark(new_status):
-    @extend_schema(request=None, responses=OpenApiTypes.OBJECT)
-    @api_view(["POST"])
-    def view(request, booking_id):
-        booking = hosts_booking(request, booking_id)
-        if booking.ride.status != "started":
-            raise ApiError("not_allowed_now", "Start the ride first.", 409)
-        move(Booking.objects.filter(pk=booking.pk), new_status, ["accepted"], "Only a confirmed guest can be marked.")
-        return Response(fresh_host_view(booking.ride_id))
-    view.__name__ = new_status
-    return view
+def confirm(booking, field):
+    """Record one side's "we're together" tap; the booking is picked up once both have tapped."""
+    if booking.ride.status != "started":
+        raise ApiError("not_allowed_now", "The ride hasn’t started yet.", 409)
+    if booking.status not in ("accepted", "picked_up"):
+        raise ApiError("not_allowed_now", "Only a confirmed seat can be picked up.", 409)
+    with transaction.atomic():
+        Booking.objects.filter(pk=booking.pk, **{f"{field}__isnull": True}).update(**{field: timezone.now()})
+        Booking.objects.filter(pk=booking.pk, status="accepted", host_confirmed_at__isnull=False,
+                               guest_confirmed_at__isnull=False).update(status="picked_up")
 
 
-picked_up = mark("picked_up")
-no_show = mark("no_show")
+@extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+@api_view(["POST"])
+def picked_up(request, booking_id):
+    """Host: "Picked up". The host's screen moves on straight away; the guest's tap completes it."""
+    booking = hosts_booking(request, booking_id)
+    confirm(booking, "host_confirmed_at")
+    return Response(fresh_host_view(booking.ride_id))
+
+
+@extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+@api_view(["POST"])
+def in_car(request, booking_id):
+    """Guest: "I'm in the car". The guest's screen moves on straight away; the host's tap completes it."""
+    booking = get_object_or_404(Booking.objects.select_related("ride__host", "ride__vehicle"), pk=booking_id, guest=request.user)
+    first_tap = booking.guest_confirmed_at is None
+    confirm(booking, "guest_confirmed_at")
+    if first_tap:
+        notify(booking.ride.host, "in_car", f"{first_name(request.user)} says they’re in the car", f"Pickup at {booking.meet_name}", request.user, booking)
+    booking.refresh_from_db()
+    return Response(guest_view(booking))
+
+
+@extend_schema(request=None, responses=OpenApiTypes.OBJECT)
+@api_view(["POST"])
+def no_show(request, booking_id):
+    """Host: the guest never came. Refused (and flagged for the admin) if the guest has said they're in the car."""
+    booking = hosts_booking(request, booking_id)
+    if booking.ride.status != "started":
+        raise ApiError("not_allowed_now", "The ride hasn’t started yet.", 409)
+    if booking.guest_confirmed_at:
+        Booking.objects.filter(pk=booking.pk).update(flagged=True)
+        raise ApiError("guest_in_car", f"{first_name(booking.guest)} says they’re in the car. Call them, or contact the Cpool admin.", 409)
+    move(Booking.objects.filter(pk=booking.pk), "no_show", ["accepted"], "Only a confirmed seat can be marked as a no-show.")
+    return Response(fresh_host_view(booking.ride_id))
 
 
 # ---------- my current trip (the app polls this) ----------

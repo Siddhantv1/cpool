@@ -41,7 +41,8 @@ class RideTests(APITestCase):
     def make_user(self, email, phone="", seats=None):
         user = User.objects.create_user(username=email, email=email, password=PASSWORD, phone=phone)
         if seats:
-            Vehicle.objects.create(owner=user, type="car", number="KA05MX2231", model="Hyundai i20", mfg_month=1, mfg_year=2021, seats=seats)
+            # Every test car gets its own plate (plates are unique across Cpool); the first one is KA05MX2231.
+            Vehicle.objects.create(owner=user, type="car", number=f"KA05MX{2231 + Vehicle.objects.count()}", model="Hyundai i20", mfg_month=1, mfg_year=2021, seats=seats)
         return user
 
     def call(self, user, method, url, data=None, status=200):
@@ -322,3 +323,71 @@ class RideTests(APITestCase):
     def test_short_ride_minimum_price(self):
         from .rides import seat_price
         self.assertEqual((seat_price("car", 0.4), seat_price("bike", 1), seat_price("car", 10)), (10, 10, 70))
+
+    # ---------- one active vehicle per plate ----------
+
+    def test_plate_only_once_on_cpool(self):
+        car = self.call(self.host, "get", "/v1/me/vehicles")[0]
+        same = {"type": "car", "number": "ka 05 mx 2231", "model": "Hyundai i20", "mfgMonth": 1, "mfgYear": 2021, "seats": 2}
+        mine = self.call(self.host, "post", "/v1/me/vehicles", same, 409)
+        self.assertEqual((mine["code"], mine["message"]), ("vehicle_exists", "You’ve already added this vehicle."))
+        theirs = self.call(self.guest, "post", "/v1/me/vehicles", same, 409)
+        self.assertIn("already registered on Cpool", theirs["message"])
+
+        bike = self.call(self.host, "post", "/v1/me/vehicles", {"type": "bike", "number": "KA01HX8812", "model": "Pulsar", "mfgMonth": 1, "mfgYear": 2020, "seats": 1, "helmet": "host"}, 201)
+        self.assertEqual(self.call_patch(self.host, f"/v1/me/vehicles/{bike['id']}", {"number": "KA05MX2231"}, 409)["code"], "vehicle_exists")
+        self.call_patch(self.host, f"/v1/me/vehicles/{bike['id']}", {"model": "Pulsar NS200"})  # editing other fields is fine
+
+        self.as_delete(self.host, f"/v1/me/vehicles/{car['id']}")  # removing it frees the plate
+        self.call(self.guest, "post", "/v1/me/vehicles", same, 201)
+
+    # ---------- picked up = both confirm ----------
+
+    def accepted_booking(self, guest=None, ride=None):
+        ride = ride or self.offer()
+        booking = self.request_seat(guest or self.guest, ride["id"])
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/accept")
+        return ride, booking
+
+    def trip_booking(self, booking_id):
+        return next(b for b in self.call(self.host, "get", "/v1/me/trip")["ride"]["bookings"] if b["id"] == booking_id)
+
+    def test_picked_up_needs_both_sides(self):
+        ride, booking = self.accepted_booking()
+        self.assertEqual(self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/in-car", status=409)["code"], "not_allowed_now")  # not started
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/picked-up")
+        b = self.trip_booking(booking["id"])
+        self.assertEqual((b["status"], b["hostConfirmed"], b["guestConfirmed"]), ("accepted", True, False))  # host moves on; waiting for the guest
+
+        mine = self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/in-car")
+        self.assertEqual((mine["status"], mine["hostConfirmed"], mine["guestConfirmed"]), ("picked_up", True, True))
+        self.assertEqual(self.alerts(self.host)[0]["kind"], "in_car")
+        self.call(self.guest2, "post", f"/v1/bookings/{booking['id']}/in-car", status=404)  # not their booking
+
+    def test_guest_can_confirm_first(self):
+        ride, booking = self.accepted_booking()
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+        self.assertEqual(self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/in-car")["status"], "accepted")  # waiting for the host
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/picked-up")
+        self.assertEqual(self.trip_booking(booking["id"])["status"], "picked_up")
+
+    def test_complete_with_one_or_no_confirmation(self):
+        ride, one_side = self.accepted_booking()
+        _, nobody = self.accepted_booking(guest=self.guest2, ride=ride)
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+        self.call(self.host, "post", f"/v1/bookings/{one_side['id']}/picked-up")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/complete")
+        first, second = Booking.objects.get(pk=one_side["id"]), Booking.objects.get(pk=nobody["id"])
+        self.assertEqual((first.status, first.guest_confirmed_at), ("picked_up", None))  # counts, but unconfirmed by the guest
+        self.assertEqual(second.status, "no_show")  # nobody confirmed
+
+    def test_no_show_refused_when_guest_is_in_car(self):
+        ride, booking = self.accepted_booking()
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+        self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/in-car")
+        err = self.call(self.host, "post", f"/v1/bookings/{booking['id']}/no-show", status=409)
+        self.assertEqual(err["code"], "guest_in_car")
+        b = Booking.objects.get(pk=booking["id"])
+        self.assertEqual((b.status, b.flagged), ("accepted", True))  # refused and flagged for the admin

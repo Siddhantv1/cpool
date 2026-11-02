@@ -39,4 +39,5 @@ urlpatterns = [
     path("v1/bookings/<int:booking_id>/cancel", rides.cancel_booking),
     path("v1/bookings/<int:booking_id>/picked-up", rides.picked_up),
     path("v1/bookings/<int:booking_id>/no-show", rides.no_show),
+    path("v1/bookings/<int:booking_id>/in-car", rides.in_car),
 ]
