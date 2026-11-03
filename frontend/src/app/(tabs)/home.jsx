@@ -12,6 +12,7 @@ import { OFFICES } from "../../lib/mock";
 import { resetDraft } from "../../lib/onboarding";
 import { maybeAskForNotifications } from "../../lib/notify";
 import { getSession, updateSession } from "../../lib/session";
+import { startRide } from "../../lib/live";
 import { cancelPublished, confirmWithdraw, placeName, publishRide, receiveRequests, swapRoute, useTrips } from "../../lib/trips";
 import { useArea } from "../../lib/useArea";
 import { defaultWhen, whenLabel } from "../../lib/when";
@@ -353,7 +354,13 @@ function OfferView({ vehicle }) {
                 </View>
               </View>
             ))}
-            <Pressable onPress={() => router.push("/drive")} accessibilityRole="button" style={{ backgroundColor: colors.green, borderRadius: radius.lg, paddingVertical: spacing.md - 2, alignItems: "center" }}>
+            <Pressable
+              onPress={() => {
+                startRide();
+                router.push("/drive");
+              }}
+              accessibilityRole="button"
+              style={{ backgroundColor: colors.green, borderRadius: radius.lg, paddingVertical: spacing.md - 2, alignItems: "center" }}>
               <Text style={{ color: colors.onGreen, fontWeight: "800" }}>Start ride</Text>
             </Pressable>
           </View>

@@ -32,9 +32,11 @@ export function parseRoute(json) {
       at = step.endKm;
       return step;
     });
-    return { coords, km: leg.distance / 1000, minutes: leg.duration / 60, steps };
+    return { coords, km: leg.distance / 1000, minutes: leg.duration / 60, steps, congestion: leg.annotation?.congestion ?? null };
   });
-  return { coords: r.geometry.coordinates, km: r.distance / 1000, minutes: r.duration / 60, legs };
+  // Traffic level per line of the route ("low" | "moderate" | "heavy" | "severe" | "unknown"), driving only.
+  const congestion = r.legs.flatMap((l) => l.annotation?.congestion ?? []);
+  return { coords: r.geometry.coordinates, km: r.distance / 1000, minutes: r.duration / 60, legs, congestion: congestion.length ? congestion : null };
 }
 
 // Straight-line stand-in when the API can't be reached (about 24 km/h in city traffic, 5 km/h walking).
@@ -55,6 +57,7 @@ export async function getRoute(points, profile = "driving-traffic") {
   if (!TOKEN) return estimate(points, profile);
   try {
     const params = new URLSearchParams({ geometries: "geojson", overview: "full", steps: "true", language: "en", access_token: TOKEN });
+    if (profile === "driving-traffic") params.set("annotations", "congestion");
     const res = await fetch(`${BASE}/${profile}/${points.map((p) => p.join(",")).join(";")}?${params}`);
     if (!res.ok) throw new Error(`directions_${res.status}`);
     const route = parseRoute(await res.json());
@@ -95,7 +98,7 @@ export function useMeetRoute(start, drop, me) {
       const k = lengthKm(safe);
       return { coords: safe, km: k, minutes: route.km ? (route.minutes * k) / lengthKm(route.coords) : 0 };
     };
-    return { route, meet: route.coords[i], toMeet: part(route.coords.slice(0, i + 1)), fromMeet: part(route.coords.slice(i)) };
+    return { route, meet: route.coords[i], toMeet: { ...part(route.coords.slice(0, i + 1)), congestion: route.congestion?.slice(0, i) ?? null }, fromMeet: { ...part(route.coords.slice(i)), congestion: route.congestion?.slice(i) ?? null } };
   }, [route, meLng, meLat]);
 }
 

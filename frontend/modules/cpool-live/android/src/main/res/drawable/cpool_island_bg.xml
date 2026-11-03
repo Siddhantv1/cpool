@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Island card background: the full-size demo card (#F3F4F9, 26dp corners). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <solid android:color="#F3F4F9" />
+  <corners android:radius="26dp" />
+</shape>

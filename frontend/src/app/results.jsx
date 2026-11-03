@@ -9,8 +9,8 @@ import { useTheme } from "../constants/theme";
 import { goBack } from "../lib/nav";
 import { searchRides } from "../lib/api";
 import { OFFICES } from "../lib/mock";
-import { pickupWindow, requestSeat, ridePrice, useOpenRideWhenAccepted } from "../lib/requestSeat";
-import { confirmWithdraw, myPickup, useTrips } from "../lib/trips";
+import { pickupWindow, requestSeat, useOpenRideWhenAccepted } from "../lib/requestSeat";
+import { confirmWithdraw, myPickup, ridePrice, useTrips } from "../lib/trips";
 import { useArea } from "../lib/useArea";
 import { defaultWhen, nearbyTimes, whenLabel } from "../lib/when";
 

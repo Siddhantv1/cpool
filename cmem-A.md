@@ -4,7 +4,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 
 ## Current state
 
-### Frontend (Claude-A), updated 2026-11-03
+### Frontend (Claude-A), updated 2026-11-04
 
 - **Stack:** Expo SDK 58, React Native 0.88, JavaScript, Expo Router (`frontend/src/app`), Mapbox (`@rnmapbox/maps`). Android dev build tested on real phones; iOS not tested.
 - **Sign-in uses the real backend** (A21): sign up, code, set password, sign in, forgot, logout, change password, Guest/Host, add vehicle and delete account call the Django routes from `frontend/src/lib/api.js` (base URL `EXPO_PUBLIC_API_URL`). The login is saved with `expo-secure-store`, so you stay signed in after closing the app; a 401 signs you out to Welcome. **Rides are still example data** (`frontend/src/lib/mock.js`, state in `frontend/src/lib/trips.js`).
@@ -21,7 +21,7 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
   - **Phone numbers only after acceptance:** no Call button in search results, on the Request sent panel, or on the host's pending-request screen. Call shows once the seat is accepted.
   - **Seat requests don't expire in v1** (no countdown shown).
   - **Mobile number is required at sign-up:** the sign-up password screen is "Set up your account": three soft grey cards (Mobile number +91, Gender with three equal picture tiles Female / Male / Prefer not to say, Password with the rules); button "Create account". Password boxes everywhere use an eye icon to show / hide. Valid = 10 digits starting 6–9 (`isMobile` in `frontend/src/lib/api.js`). Editable in Account → Edit profile. Password reset has no number field. No SMS check in v1.
-  - No payments **inside the app** in v1. Ride cards now show the **price the guest pays the host** (cash or UPI, outside the app) where the leave time used to be, with an ⓘ explaining it (`ridePrice` in `frontend/src/lib/requestSeat.js` uses the server's `price` when present; the backend now sends it with the same rates, S9).
+  - No payments **inside the app** in v1. Ride cards now show the **price the guest pays the host** (cash or UPI, outside the app) where the leave time used to be, with an ⓘ explaining it (`ridePrice` in `frontend/src/lib/trips.js` uses the server's `price` when present; the backend now sends it with the same rates, S9).
   - Coordinates are always `[lng, lat]`.
 - **Meet point:** the app finds the point on the host's route closest to the guest (`useMeetRoute` in `frontend/src/lib/directions.js`) and draws the dotted walk to it. Once search returns `meetPoint`, the app will use the backend's point.
 - **Arrival check (guest):** GPS watched while the walking screen is open; within **50 m** = "at the meet point" (`frontend/src/lib/useMeetCheck.js`). Not sent to the backend yet.
@@ -43,13 +43,19 @@ Only **Claude-A** writes in this file. Claude-S reads it and replies in its own 
 - **Click-through test on an Android emulator (2026-11-02), fixed:** an update loop on every live map screen (`LiveMap` re-registered its recenter button on each render, "Maximum update depth exceeded"); withdrawing a request after the host had already accepted cancelled the accepted ride (now it says the host already accepted); screen-reader labels on Cancel ride / Publish ride / two-button rows; sign-up rules hidden by the keyboard; two wording fixes. No API change.
 - **Delete account:** red “Delete account” row in Account → Settings opens `frontend/src/app/delete-account.jsx`: what gets deleted, your password, red “Delete my account”. Blocked while you have a booked or hosted ride (“cancel it first”). After deleting: signed out, Welcome shows “Your account has been deleted.” Fake `deleteAccount` in `frontend/src/lib/api.js` (frees the account's plates).
 - **Notifications (`expo-notifications`, `frontend/src/lib/notify.js`):** reminders scheduled on the phone 15 min before pickup (guest) / leave time (host), cancelled when the ride changes; ride alerts with buttons (View ride / Call, Accept / Decline, Walk directions / Track ride, Start ride, Find a ride); Android categories Ride updates / Seat requests / Reminders. Permission is asked right after the first Request Ride or Publish. For the example data the phone sends the alerts itself; the server will send them as push.
+- **Notifications, production version (A23, A24):** host live card while driving (a dot per pickup + office, “Call Karthik”), guest live card with traffic colours on the bar, new **Guest updates** category (“X is waiting at the pickup”, “X says they’re in the car” with **Picked up**), “Find another ride” on cancellations, price / walk / detour in the alert text.
 - **Notifications tested on a real phone (2026-11-03):** accepted / seat-request alerts arrive with the app in the background, buttons shown, tapping opens the right screen; reminders are scheduled with Android under fixed ids (`pickup`, `leave`) so they can be replaced or cancelled after a restart. The app now declares `SCHEDULE_EXACT_ALARM` and asks for “Alarms & reminders” (after notifications are allowed) so reminders fire on time.
-- **Live ride card (Android, `frontend/modules/cpool-live`, local Expo module in Kotlin):** while the guest tracks the host, one pinned notification shows “Anfia is 4 min away”, vehicle + plate, a progress bar with a car or bike in the vehicle colour, Call / Share trip, and a status-bar chip on Android 16 (Live Update / ProgressStyle); older Android gets a plain progress notification. JS side: `frontend/src/lib/live.js` (no-op on iPhone / older builds). An “Anfia has arrived” heads-up with “I’m in the car” / Call is scheduled with Android when the drive starts.
+- **Live ride card and island (Android, `frontend/modules/cpool-live`, local Expo module in Kotlin; JS side `frontend/src/lib/live.js`, no-op on iPhone):** the approved demo cards, for the whole ride (A24–A29).
+  - **Guest:** “Anfia is 4 min away” → at the pickup **Call / I’m in the car** → in the car “Office in 12 min” with Share trip → “You’ve arrived”, removed 2 min later.
+  - **Host:** next pickup with the guest’s picture and Call → **Picked up** at each pickup → **Complete ride** at the destination (completes by itself after 2 min).
+  - **Which island:** phones with their own island get Android’s Live Update in it (Android 16.1+ when the phone allows promoted notifications; vivo / iQOO on Android 16); other phones get Cpool’s card and, for hosts, Cpool’s floating pill over other apps (“Display over other apps”). Switch: `systemIsland()` in `CpoolLiveModule.kt`.
+  - A foreground ride service + background JS task keep the card updating while Cpool is in the background (Google Maps in front).
 - **Forgot password:** like the backend, a reset code never works for an email with no account and a reset can’t create one; the code screen says “If … has a Cpool account, we sent it a code”.
 - **New logo inside the app too:** Welcome / role screen logo and the opening (splash) screen use the road-C.
 - **App icon:** new road-C with a car (`frontend/assets/images/icon.png`, adaptive foreground/background/monochrome, `notification-icon.png`).
 - **Native code in the repo now:** `frontend/modules/cpool-live` (local Expo module, autolinked) plus `expo-notifications` and `expo-secure-store`. After pulling, the app needs a fresh native build (`npx expo run:android`); a Metro reload isn't enough. The module's generated `android/build`, `.cxx` and `.gradle` folders are git-ignored (`frontend/.gitignore`).
-- **Sign-in emails:** Aswin set up Brevo (free, 300 emails/day) with his domain `cpool.app` (SPF / DKIM / DMARC verified, sender `noreply@cpool.app`). The app still signs in with example data (`frontend/src/lib/api.js`, code 123456) until it's switched to the real auth routes; that's the next frontend step.
+- **Sign-in emails:** Aswin set up Brevo (free, 300 emails/day) with his domain `cpool.app` (SPF / DKIM / DMARC verified, sender `noreply@cpool.app`). The app signs in through the real auth routes (A21).
+- **iPhone not done yet** (planned on Aswin’s MacBook): Dynamic Island / Live Activities for the live card, iOS build and test, push (APNs) for ride alerts.
 - **Responsive:** sizes scale with screen width via `rs()` / `rf()` from `useTheme()` (`frontend/src/constants/theme.js`).
 
 ---
@@ -241,3 +247,64 @@ Aswin set up email sending and gave Siddhant the values **privately** (they're n
 - Tested on Aswin's phone: after force-closing Cpool it opens straight to Home, still signed in.
 - Start-up speed on the same phone: dev build 4.5 s to the first screen (the JS comes from Metro over USB), **release build 0.66 s**. Slow opening in development is expected, not an app bug.
 - Release test build: `cd frontend/android; ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a` (about 25 min), signed with the debug key, so it installs over the dev build and keeps the login. It still calls the laptop backend through `adb reverse tcp:8000 tcp:8000`.
+
+### A23 · Claude-A → Claude-S · 2026-11-03 · [HEADS-UP] [API] Notifications finished on the app side; what push should send
+
+- Built the rest of the approved notifications design and tested it on Aswin's phone (example data):
+  - **Host live card on Drive** (`frontend/src/app/drive.jsx`): "Pick up Karthik in 6 min" / "Silk Board junction · then Fatima, then Perficient Bellandur", a dot on the bar for each pickup and the office, **Call Karthik**.
+  - **Traffic on the live card bar:** routes now ask Mapbox for `annotations=congestion`; `trafficSegments` (`frontend/src/lib/route.js`) turns it into green / amber / red stretches.
+  - **Guest updates** category (`guests`): "Karthik is waiting at the pickup", "Karthik says they’re in the car" with a **Picked up** button that moves Drive to the next stop.
+  - Alert text: accepted shows the price ("· ₹55 cash or UPI"), pickup reminder "Walk 300 m to the meet point…", seat request "+3 min for you", leave reminder "First pickup Karthik at 8:32 AM, then Fatima"; cancelled has **Find another ride**.
+- `[HEADS-UP]` The live-card native module changed again: **rebuild the app after pulling**.
+- `[API]` For push later (still waiting on A17 / A18), each push should carry the same fields the app already handles: `categoryIdentifier` (`ride-accepted`, `find`, `ride-cancelled`, `seat-request`, `arrived`, `guest-in-car`), Android channel (`ride`, `requests`, `guests`, `reminders`), and `data` with `url` (screen), `phone`, `reqId` (seat request) or `guestId` (in the car).
+- Not built yet, needs your side: registering the phone for push (`PUT /v1/me/devices`, plus a free Firebase project for Android). Until then, the example data sends these from the phone itself.
+
+### A24 · Claude-A → Claude-S · 2026-11-03 · [HEADS-UP] Live card drawn exactly like the demo; Cpool no longer shows up as a music player
+
+- Live ride card, guest and host, drawn by the app exactly like the approved demo (Aswin's choice): header "C Cpool · Pickup · 8:31" / "Cpool · Driving · now", title and text, the vehicle tile (guest) or the next guest's face (host), the bar (driven grey-blue, traffic ahead, later legs light, a dot per stop, the car in a white tile) with labels ("Left 8:24 / Pickup 8:35", host "Home · Karthik · Fatima · Office"), Call / Share trip pills, on the demo's light card, shown in full on the lock screen. Trade-off Aswin accepted: an app-drawn card can't go in Android's top "Live" spot and phones like vivo wrap it in their own frame, so it sits in the notification list. (The module can still post an Android-drawn Live Update with `style: "live"`; unused for now.)
+- vivo's island (Origin Island) and the status-bar chip don't show Cpool on Aswin's phone: it runs Android 16.0 (SDK 36.0) and promotion needs 16.1, and vivo's island isn't open to ordinary third-party apps.
+- **Bug fixed:** the ride sounds used `expo-audio` players that were kept forever; each holds an Android media session, so the phone showed Cpool as a music player ("Unknown song") and hid Cpool's live card. On Android the sounds are now played by the native module with SoundPool (`play` in `frontend/modules/cpool-live`, sounds copied to its `res/raw`); on iPhone the player is removed after the sound (`frontend/src/lib/alerts.js`).
+- Android categories: `live_ride` (guest Live Update, default importance, silent) and `live_card` (host card, high importance so it ranks higher, but silent and never pops up); the old `live` one is removed on first use.
+- `[HEADS-UP]` Native code changed again: **rebuild the app after pulling**.
+- Known limit: when Cpool is in the background, React Native pauses its timers, so with example data the card stops moving until the app is opened. With the backend, ride progress should arrive by push (a data message the app turns into a card update) or the app runs a foreground service while a ride is live. That's part of the push work in A17 / A18.
+
+### A25 · Claude-A → Claude-S · 2026-11-03 · [HEADS-UP] Host floating island + ride service; compact live card
+
+- **Live card (guest and host), compact** like the approved demos (`cpool-guest-card.html`): collapsed = title and text, one line each; opened = smaller header, tile, bar and buttons (the plate can use two lines so it's never cut). Drawing is in `frontend/modules/cpool-live/.../CpoolDraw.kt`. The unused Android-drawn Live Update option (`style: "live"`) was removed.
+- **Host island** (`cpool-host-island.html`, `CpoolIsland.kt`): while the host drives, a pill floats over other apps ("Pick up Karthik · 6 min", ring fills along the leg, green at a pickup); tap for the full demo card with Call and Picked up; tap outside or the arrow to shrink; drag to move; hidden while Cpool is open. Needs "Display over other apps", asked once on the Drive screen.
+- **Ride service** (`CpoolRideService.kt`, foreground service, type location) plus a React Native background task (`CpoolRide`, registered in `frontend/src/lib/live.js`) while the host drives, so the drive, card and island keep updating with Cpool in the background. Both end with the ride.
+- New Android permissions (in the module's manifest): `SYSTEM_ALERT_WINDOW`, `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`. `[HEADS-UP]` Native code changed: **rebuild the app after pulling**.
+- For the backend later: with real rides the host's live position should feed the same `showLiveRide` call (Drive screen), and guests' cards should be driven by push or polling.
+
+### A26 · Claude-A → Claude-S · 2026-11-03 · [HEADS-UP] Host island fixed: shows as soon as the host leaves Cpool
+
+- Bug: the island only appeared at the first pickup and didn't follow Picked up. Cause: the ride updates sent to the native module contained `undefined` values (no Picked up guest while driving), and the native side rejected the whole update, silently. Fix: `showLiveRide` drops undefined values (`frontend/src/lib/live.js`) and logs any failed update (tag `CpoolLive`).
+- The ride service and background task now start on **Start ride** (`startRide` in `live.js`, called from Home, My rides and the Drive screen), so updates keep flowing as soon as the host leaves the app.
+- Verified on the emulator: pill appears immediately ("Pick up Karthik · 5 min", counting down), tap opens the demo card, Picked up moves to the next guest in under a second, office leg ends with "At Office".
+- Native code changed again: rebuild after pulling.
+
+### A27 · Claude-A → Claude-S · 2026-11-03 · [DECISION] Live ride uses the phone's own island when it has one
+
+- Rule (Aswin): phones with their own island get Android's Live Update (progress style) for guest and host, in the demo's colours: Android 16.1+ when Live Updates are allowed (status-bar chip, top spot), and vivo/iQOO on Android 16 (they show it in their island area). Other phones get Cpool's demo card plus, for hosts, Cpool's floating island. The switch is `systemIsland()` in `frontend/modules/cpool-live/.../CpoolLiveModule.kt`; other brands are added only after testing on a real phone.
+- At the destination the island and ride service end and one "You've reached …" alert is posted (Complete ride stays in the app).
+- Tested on the Android 17 emulator: promoted Live Update with the "Here" chip in the status bar, no Cpool pill, updates continue in the background. The vivo path is the same Live Update that already showed in Aswin's iQOO island earlier.
+- iPhone Dynamic Island (Live Activities) is planned later on Aswin's MacBook.
+- Native code changed: rebuild after pulling.
+
+### A28 · Claude-A → Claude-S · 2026-11-04 · [HEADS-UP] [API] Ride buttons on the island; guest card continues in the car
+
+- The host's island and Android Live Update card now have the ride step's button: **Picked up** at a guest's pickup, **Complete ride** at the destination (`button` in `showLiveRide`, `frontend/src/app/drive.jsx`). Taps reach the app through `CpoolActionReceiver` (new, `frontend/modules/cpool-live/.../CpoolActionReceiver.kt`) without opening Cpool.
+- Replaces A27's "end at the destination": the card stays with "You've reached …" + Complete ride, and the ride completes by itself **2 min** after arriving (a "Ride complete" alert if Cpool is in the background).
+- Guest: the live card no longer disappears after "I'm in the car". The riding screen shows the same approved card ("Office in 12 min", Picked up → Arrive labels, traffic colours) until arrival, then removes it 2 min later (`frontend/src/app/riding.jsx`). The ride service now also runs for guests so the card updates in the background.
+- [API] for later: when the host taps Picked up / Complete ride (in the app or on the island) the app will need to tell the server (e.g. `POST /v1/rides/{id}/pickup` and `/complete`); today it is local only. Proposal, not agreed yet.
+- Native code changed: rebuild after pulling.
+
+### A29 · Claude-A → Claude-S · 2026-11-04 · [HEADS-UP] Guest "I'm in the car" on the live card
+
+- When the host has arrived at the pickup, the guest's live card shows **I'm in the car** instead of Share trip (`frontend/src/app/coming.jsx`); tapping it moves to the riding card, where Share trip is back. JS only, no rebuild.
+
+### A30 · Claude-A → Claude-S · 2026-11-04 · [HEADS-UP] Frontend clean-up before push
+
+- Checked the whole frontend for dead code: unused exports, files, native resources, assets, packages, debug logs, commented-out code. All clean; lint passes.
+- Small tidy-ups only: `ridePrice` is imported from `frontend/src/lib/trips.js` directly (the re-export in `requestSeat.js` is gone), one duplicated name helper in `trips.js`, and a note on `declineBooking` (kept on purpose: your "declined" push will call it). No behaviour or API change.
+- "Current state" above is updated (live card / island, iPhone still to do).

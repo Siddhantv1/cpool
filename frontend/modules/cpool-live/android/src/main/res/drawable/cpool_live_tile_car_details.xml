@@ -1,0 +1,5 @@
+<!-- Windows and wheels drawn over the tinted car body. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+  <path android:fillColor="#DCE8FF" android:pathData="M10.6,9.3h2.2v1.9H9.2ZM14.2,9.3h1.3l1.3,1.9h-2.6Z" />
+  <path android:fillColor="#1F2430" android:pathData="M5.4,16.6a2,2 0,1 0,4 0a2,2 0,1 0,-4 0ZM14.6,16.6a2,2 0,1 0,4 0a2,2 0,1 0,-4 0Z" />
+</vector>

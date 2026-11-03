@@ -13,3 +13,8 @@ android {
     versionName "0.1.0"
   }
 }
+
+dependencies {
+  // React Native's background task API (keeps the app's timers running while the host drives); same as expo-modules-core.
+  implementation 'com.facebook.react:react-android'
+}

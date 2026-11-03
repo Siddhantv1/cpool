@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "../../components/RideUI";
 import { useTheme } from "../../constants/theme";
 import { PAST_RIDES } from "../../lib/mock";
+import { startRide } from "../../lib/live";
 import { cancelBooking, useTrips } from "../../lib/trips";
 
 export default function MyRides() {
@@ -67,7 +68,10 @@ export default function MyRides() {
                 </View>
                 <Ionicons name="chevron-forward" size={rs(18)} color={colors.textMuted} />
               </View>,
-              () => router.push(passengers.length ? "/drive" : "/home"),
+              () => {
+                if (passengers.length) startRide();
+                router.push(passengers.length ? "/drive" : "/home");
+              },
             )
           : null}
 

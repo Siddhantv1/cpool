@@ -5,12 +5,17 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import NotifyAsk from "../components/NotifyAsk";
 import OfflineGate from "../components/OfflineGate";
 import { setupNotifications, useNotificationTaps } from "../lib/notify";
-import { answerRequest } from "../lib/trips";
+import { answerRequest, confirmPickup } from "../lib/trips";
 
-// Accept / Decline on a seat-request notification; if the ride is already full, open the request instead.
+// Buttons that change ride state. Accept / Decline on a seat request (if the ride is already full, open the request
+// instead); "Picked up" on a guest's notification moves Drive on to the next stop (Drive is already the open screen).
 function onNotificationAction(id, data) {
   if (id === "incar") {
     router.push("/riding");
+    return true;
+  }
+  if (id === "pickedup") {
+    confirmPickup(data.guestId);
     return true;
   }
   if (id !== "accept" && id !== "decline") return false;

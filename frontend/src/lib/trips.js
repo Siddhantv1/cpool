@@ -11,6 +11,7 @@ let state = {
   published: null, // host: { from, to, when }
   requests: [], // host: pending seat requests
   passengers: [], // host: accepted guests, at most published.seats
+  leg: 0, // host on Drive: 0…passengers.length-1 = driving to that guest, passengers.length = to the office
   // Alerts tab, newest first: { id, kind, title, text, at, read, who?: { initials, color }, reqId? }
   alerts: ALERTS.map((a) => ({ ...a, at: Date.now() - a.minsAgo * 60000, read: true })),
   saved: { home: HOME, office: OFFICES[0] }, // Account → Saved places
@@ -60,8 +61,17 @@ export const removeAlert = (id) => set({ alerts: state.alerts.filter((a) => a.id
 const hostWho = (h) => ({ initials: h.initials, color: h.color, gender: h.gender });
 const guestWho = (r) => ({ initials: r.initials, color: "#7C3AED", gender: r.gender });
 
+// What the guest pays the host per seat (cash or UPI, outside the app): the server's price when present, else the
+// same rates the backend uses (car ₹7/km, bike ₹4/km, rounded to ₹5, at least ₹10).
+export function ridePrice(host) {
+  if (host.price) return host.price;
+  const km = parseFloat(host.ride) || 0;
+  return Math.max(10, Math.round((km * (host.type === "bike" ? 4 : 7)) / 5) * 5);
+}
+
 // ----- guest -----
 let answerTimer = null;
+const acceptedText = (host, pickup) => `Tomorrow ${host.time} AM · meet near ${pickup.name} · ₹${ridePrice(host)} cash or UPI`;
 // Where you'll be picked up: the pickup you chose, else where you are now (area from useArea), else the example meet point.
 export function myPickup(area) {
   if (state.places.pickup?.coords) return state.places.pickup;
@@ -73,7 +83,7 @@ export function myPickup(area) {
 export function bookRide(hostId, drop = OFFICES[0], pickup = myPickup()) {
   const host = hostById(hostId);
   set({ booking: { host, pickup, drop, status: "requested", at: Date.now() } });
-  alertIn("answer", "ride", 8, { title: `${first(host.name)} accepted your request`, body: `Tomorrow ${host.time} AM · meet near ${pickup.name}`, categoryIdentifier: "ride-accepted", data: { url: "/accepted", phone: host.phone } });
+  alertIn("answer", "ride", 8, { title: `${first(host.name)} accepted your request`, body: acceptedText(host, pickup), categoryIdentifier: "ride-accepted", data: { url: "/accepted", phone: host.phone } });
   // shortcut: the example host accepts after 8 s; really the answer arrives as a push notification from the backend.
   answerTimer = setTimeout(() => {
     acceptBooking();
@@ -97,23 +107,24 @@ function setBooking(status, kind, title, text, reason) {
   if (status === "accepted") {
     remind("pickup", pickupAt(b.host.time), {
       title: "Pickup in 15 min",
-      body: `Walk to the meet point near ${b.pickup.name}. ${first(b.host.name)} · ${b.host.time} AM · ${b.host.plate}`,
+      body: `Walk ${b.host.walkTo} to the meet point near ${b.pickup.name} · ${first(b.host.name)} ${b.host.time} AM`,
       categoryIdentifier: "pickup-reminder",
       data: { url: "/coming", walkUrl: walkUrl(b.pickup.coords) },
     });
   } else {
     cancelScheduled("pickup");
     cancelScheduled("answer");
-    if (status !== "withdrawn") alertNow("ride", { title, body: text, categoryIdentifier: "find", data: { url: "/results" } });
+    if (status !== "withdrawn") alertNow("ride", { title, body: text, categoryIdentifier: status === "cancelled" ? "ride-cancelled" : "find", data: { url: "/results" } });
   }
   set({ booking: { ...state.booking, status, reason }, alerts: [alert(kind, title, text, { who: hostWho(state.booking.host), cta: ["declined", "cancelled"].includes(status) ? "find" : undefined }), ...state.alerts] });
 }
 const acceptBooking = () =>
-  state.booking && setBooking("accepted", "accepted", `${first(state.booking.host.name)} accepted your request`, `Tomorrow ${state.booking.host.time} AM · meet near ${state.booking.pickup.name}`);
+  state.booking && setBooking("accepted", "accepted", `${first(state.booking.host.name)} accepted your request`, acceptedText(state.booking.host, state.booking.pickup));
+// The host said no. Not called yet: the backend's "declined" push will call it (the Cancelled screen already handles it).
 export const declineBooking = () =>
-  state.booking && setBooking("declined", "declined", `${first(state.booking.host.name)} couldn't take you`, "Your seat request was declined. Try another ride.");
+  state.booking && setBooking("declined", "declined", `${first(state.booking.host.name)} couldn’t take you`, "Your seat request for tomorrow was declined.");
 export const cancelBooking = () =>
-  state.booking && setBooking("cancelled", "cancelled", `${first(state.booking.host.name)} cancelled your ride`, "Plans changed. Find another ride for this trip.", "Plans changed");
+  state.booking && setBooking("cancelled", "cancelled", `${first(state.booking.host.name)} cancelled your ride`, "Reason: plans changed · find another ride for tomorrow.", "Plans changed");
 // You cancel: a pending request (withdraw) or an accepted ride with a reason.
 export function withdrawBooking(reason) {
   if (!state.booking) return;
@@ -122,8 +133,8 @@ export function withdrawBooking(reason) {
 }
 // Asks before withdrawing a seat request that is still waiting for the host.
 export function confirmWithdraw(onDone) {
-  const first = state.booking?.host.name.split(" ")[0] ?? "The host";
-  Alert.alert("Withdraw your request?", `${first} won’t see it any more.`, [
+  const name = state.booking ? first(state.booking.host.name) : "The host";
+  Alert.alert("Withdraw your request?", `${name} won’t see it any more.`, [
     { text: "Keep waiting", style: "cancel" },
     {
       text: "Withdraw",
@@ -150,16 +161,24 @@ export function clearBooking() {
 // ----- host -----
 // ride: { from, to, when, at, seats } (seats = free seats in your vehicle: car seats, or 1 on a bike)
 export function publishRide(ride) {
-  set({ published: ride, requests: [], passengers: [] });
+  set({ published: ride, requests: [], passengers: [], leg: 0 });
   REQUESTS.forEach((r) =>
     alertIn(`request-${r.id}`, "requests", 4, {
       title: `${first(r.name)} asked for a seat`,
-      body: `${r.pickupTime} · ${r.pickup} · ${r.rides} rides`,
+      body: `${r.pickupTime} · ${r.pickup} · ${r.detour} for you · ${r.rides} rides`,
       categoryIdentifier: "seat-request",
       data: { url: { pathname: "/request", params: { id: r.id } }, reqId: r.id },
     }),
   );
-  remind("leave", ride.at, { title: "Leave in 15 min", body: `Your ride to ${placeName(ride.to)} · ${ride.when}`, categoryIdentifier: "leave-reminder", data: { url: "/drive" } });
+  remindLeave();
+}
+// "Leave in 15 min", naming the first pickup once someone is booked (scheduled again on each accept).
+function remindLeave() {
+  const { published: ride, passengers } = state;
+  if (!ride) return;
+  const [next, ...rest] = passengers;
+  const body = next ? `First pickup ${first(next.name)} at ${next.pickupTime}${rest.length ? `, then ${rest.map((p) => first(p.name)).join(", then ")}` : ""}` : `Your ride to ${placeName(ride.to)} · ${ride.when}`;
+  remind("leave", ride.at, { title: "Leave in 15 min", body, categoryIdentifier: "leave-reminder", data: { url: "/drive" } });
 }
 // Example: colleagues' requests come in shortly after publishing.
 export const receiveRequests = () =>
@@ -170,7 +189,14 @@ export function answerRequest(id, accept) {
   if (!req) return false;
   if (accept && state.passengers.length >= (state.published?.seats ?? 1)) return false;
   set({ requests: state.requests.filter((r) => r.id !== id), passengers: accept ? [...state.passengers, req] : state.passengers });
+  if (accept) remindLeave();
   return true;
+}
+// Drive: on to the next guest (or the office). confirmPickup is the "Picked up" button on a guest's notification;
+// it only counts for the guest you're driving to, so an old notification can't skip anyone.
+export const nextPickup = () => set({ leg: state.leg + 1 });
+export function confirmPickup(guestId) {
+  if (state.passengers[state.leg]?.id === guestId) nextPickup();
 }
 export function cancelPublished() {
   if (!state.published) return;
@@ -178,9 +204,9 @@ export function cancelPublished() {
   REQUESTS.forEach((r) => cancelScheduled(`request-${r.id}`));
   const guests = state.passengers;
   const text = guests.length ? `${guests.map((p) => first(p.name)).join(", ")} ${guests.length === 1 ? "has" : "have"} been told` : "No one had booked yet";
-  set({ published: null, passengers: [], requests: [], alerts: [alert("cancelled", `You cancelled your ride · ${state.published.when}`, text, guests.length ? { who: guestWho(guests[0]) } : {}), ...state.alerts] });
+  set({ published: null, passengers: [], requests: [], leg: 0, alerts: [alert("cancelled", `You cancelled your ride · ${state.published.when}`, text, guests.length ? { who: guestWho(guests[0]) } : {}), ...state.alerts] });
 }
 export function finishHosting() {
   cancelScheduled("leave");
-  set({ published: null, passengers: [], requests: [] });
+  set({ published: null, passengers: [], requests: [], leg: 0 });
 }

@@ -8,9 +8,11 @@ import { useEffect, useState } from "react";
 import { AppState, Linking, Platform } from "react-native";
 
 // Android categories: each one can be muted on its own in Settings → Apps → Cpool → Notifications.
+// (The "Live ride" category is created by the live card's native module, modules/cpool-live.)
 const CHANNELS = {
-  ride: ["Ride updates", "Accepted, declined, cancelled"],
+  ride: ["Ride updates", "Accepted, arrived, declined, cancelled"],
   requests: ["Seat requests", "For hosts · Accept / Decline"],
+  guests: ["Guest updates", "For hosts · waiting at pickup, in the car"],
   reminders: ["Reminders", "15 min before every ride"],
 };
 const BUTTONS = {
@@ -19,7 +21,9 @@ const BUTTONS = {
   "pickup-reminder": [["walk", "Walk directions"], ["track", "Track ride"]],
   "leave-reminder": [["start", "Start ride"]],
   arrived: [["incar", "I’m in the car"], ["call", "Call"]],
+  "guest-in-car": [["pickedup", "Picked up"]],
   find: [["find", "Find a ride"]],
+  "ride-cancelled": [["find", "Find another ride"]],
 };
 const REMIND_MIN = 15;
 
@@ -58,7 +62,8 @@ async function schedule(key, content, trigger) {
     await Notifications.scheduleNotificationAsync({ identifier: key, content, trigger });
   } catch {}
 }
-export const cancelScheduled = (key) => Notifications.cancelScheduledNotificationAsync(key).catch(() => {});
+// Removes it whether it's still waiting or already in the shade, so no stale buttons are left behind.
+export const cancelScheduled = (key) => Promise.all([Notifications.cancelScheduledNotificationAsync(key), Notifications.dismissNotificationAsync(key)]).catch(() => {});
 // "Pickup in 15 min" / "Leave in 15 min".
 export function remind(key, at, content) {
   const date = new Date(new Date(at).getTime() - REMIND_MIN * 60000);
@@ -70,7 +75,7 @@ export function alertIn(key, channel, seconds, content) {
   return schedule(key, content, { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: channel });
 }
 
-// Asks once per app start, at the moment it makes sense (first request or publish). copy: { title, text, preview, button? }
+// Asks once per app start, at the moment it makes sense (first request or publish). copy: { title, text, preview, button?, onAllow?, pill? }
 // Already allowed: asks for exact alarms instead, or Android may deliver a reminder up to an hour late.
 const EXACT = { title: "Get reminders on time", text: "Allow “Alarms & reminders” so the 15-minute reminder arrives exactly on time.", preview: ["Pickup in 15 min", "Walk to the meet point"], button: "Allow alarms & reminders" };
 let asked = false;
@@ -84,6 +89,8 @@ export async function maybeAskForNotifications(copy) {
   if (!p.granted) return void (p.canAskAgain && askers.forEach((fn) => fn(copy)));
   if (!(await exactAllowed())) askers.forEach((fn) => fn(EXACT));
 }
+// Shows the same bottom sheet for another permission. copy: { title, text, button, onAllow, preview? | pill? }
+export const askWith = (copy) => askers.forEach((fn) => fn(copy));
 export function useNotificationAsk() {
   const [copy, setCopy] = useState(null);
   useEffect(() => {

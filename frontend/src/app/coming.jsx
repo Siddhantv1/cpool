@@ -7,9 +7,9 @@ import LiveMap from "../components/LiveMap";
 import { ActionRow, Avatar, call, EtaCard, MapSheet, Plate, RoundButton, shareTrip, SosButton } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
 import { playAlert } from "../lib/alerts";
-import { useMeetRoute, useRoute, walkLabel } from "../lib/directions";
-import { km } from "../lib/route";
-import { endLiveRide, showLiveRide, vehicleColour } from "../lib/live";
+import { arriveAt, useMeetRoute, useRoute, walkLabel } from "../lib/directions";
+import { km, liveBar, trafficSegments } from "../lib/route";
+import { endLiveRide, onIslandAction, showLiveRide, startRide, vehicleColour } from "../lib/live";
 import { alertIn, cancelScheduled } from "../lib/notify";
 import { useTrips } from "../lib/trips";
 import { useMeetCheck } from "../lib/useMeetCheck";
@@ -43,24 +43,36 @@ export default function Coming() {
   });
   // The live ride card in the notification shade: updated every 5% of the drive, removed when you leave this screen.
   const host = booking?.host;
+  const [leftAt] = useState(() => arriveAt(0).split(" ")[0]); // when the host set off: "Left 8:24" on the card
   const step = leg ? Math.floor(move.t * 20) * 5 : null;
   const minsAway = leg ? Math.max(1, Math.round(leg.minutes * (1 - move.t))) : null;
   useEffect(() => {
     if (!host || step == null) return;
     const name = host.name.split(" ")[0];
     const here = phase === "arrived";
+    const progress = here ? 100 : step;
+    // The approved demo's card, drawn by Cpool (header, vehicle tile, bar with Left / Pickup labels, Call, Share trip).
     showLiveRide({
+      style: "card",
       title: here ? `${name} has arrived` : `${name} is ${minsAway} min away`,
-      text: `${host.vehicle} · ${host.plate}`,
-      chip: here ? "Here" : `${minsAway} min`,
-      progress: here ? 100 : step,
+      text: `${host.vehicle} · ${host.plate}${host.type === "bike" && host.helmet ? " · spare helmet for you" : ""}`,
+      sub: "Pickup",
+      chip: here ? "Here" : `${minsAway} min`, // status-bar chip on phones with their own island
+      progress,
+      segments: liveBar(progress, 0, 100, trafficSegments(leg.coords, leg.congestion)), // amber / red where it's slow
+      points: [{ at: 0, color: "#5E6577" }, { at: 100, color: "#1D4ED8" }],
+      labels: [{ at: 0, text: `Left ${leftAt}` }, { at: 100, text: `Pickup ${host.time}` }],
       vehicle: host.type,
       color: vehicleColour(host.vehicle),
       phone: host.phone,
-      share: `I'm riding with ${host.name} (${host.plate}). Track me on Cpool.`,
+      // Host here: "I'm in the car" takes Share trip's place (same as the button on this screen); Share trip comes back on the riding card.
+      share: here ? undefined : `I'm riding with ${host.name} (${host.plate}). Track me on Cpool.`,
+      button: here ? { label: "I’m in the car", action: "incar" } : undefined,
     });
-  }, [host, step, minsAway, phase]);
+    startRide(); // keeps Cpool running so the card updates in the background (safe to call again)
+  }, [host, leg, step, minsAway, phase, leftAt]);
   useEffect(() => endLiveRide, []);
+  useEffect(() => onIslandAction(({ action }) => action === "incar" && router.replace("/riding")), []);
   // "Has arrived" alert for when you're in another app. Scheduled with Android when the drive starts, because the phone
   // may pause Cpool in the background; cancelled if you leave this screen first.
   const driving = !!leg;

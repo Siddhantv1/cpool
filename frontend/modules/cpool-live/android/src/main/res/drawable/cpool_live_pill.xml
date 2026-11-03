@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Call / Share trip buttons: tonal pill. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+  <solid android:color="#DCE3F9" />
+  <corners android:radius="999dp" />
+</shape>

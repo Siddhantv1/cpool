@@ -10,9 +10,9 @@ import { useMeetRoute, useRoute, walkLabel } from "../lib/directions";
 import { useMapControl } from "../lib/mapControl";
 import { OFFICES } from "../lib/mock";
 import { goBack } from "../lib/nav";
-import { pickupWindow, requestSeat, ridePrice, useOpenRideWhenAccepted } from "../lib/requestSeat";
+import { pickupWindow, requestSeat, useOpenRideWhenAccepted } from "../lib/requestSeat";
 import { km } from "../lib/route";
-import { confirmWithdraw, hostById, myPickup, useTrips } from "../lib/trips";
+import { confirmWithdraw, hostById, myPickup, ridePrice, useTrips } from "../lib/trips";
 import { useArea } from "../lib/useArea";
 
 // A small box around a point, so the camera zooms in on it (See pickup / See drop).
