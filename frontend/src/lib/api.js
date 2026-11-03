@@ -1,124 +1,80 @@
-// All API calls go through here. Fake for now; same shapes as the API table in README.md.
-// shortcut: fake data in memory with an 800 ms delay, replace with fetch() once the Django backend is ready.
+// All API calls go through here; shapes follow the API table in README.md.
+// Sign-in, profile, vehicles and delete account call the Django backend (EXPO_PUBLIC_API_URL). Rides are still example data.
 
+import { router } from "expo-router";
 import { HOSTS, PLACES } from "./mock";
+import { clearSession, getSession, updateSession } from "./session";
 
 const wait = () => new Promise((resolve) => setTimeout(resolve, 800));
 const normalize = (email) => email.trim().toLowerCase();
+const API = process.env.EXPO_PUBLIC_API_URL ?? "";
 
 export const isWorkEmail = (email) => /^[^\s@]+@perficient\.com$/i.test(email.trim());
 // Indian mobile number typed without +91: 10 digits starting with 6–9.
 export const isMobile = (digits) => /^[6-9]\d{9}$/.test(digits);
 
-// Fake accounts: email -> password. Demo account for testing login without signing up.
-const users = new Map([["demo@perficient.com", "Cpool123"]]);
-// Fake profiles: email -> { role, vehicle }. Empty until first-time setup is done.
-const profiles = new Map();
-const FAKE_CODE = "123456";
-
-function checkEmail(email) {
-  if (!isWorkEmail(email)) throw new Error("Use your perficient email.");
-}
-
-// POST /v1/auth/signup {email} -> sends a code to the email
-export async function signup(email) {
-  await wait();
-  checkEmail(email);
-  if (users.has(normalize(email))) throw new Error("An account with this email already exists. Sign in instead");
-  return { ok: true };
-}
-
-// POST /v1/auth/forgot {email} -> sends a code to the email
-// The real backend answers the same whether or not the account exists, so nobody can probe for accounts.
-export async function forgotPassword(email) {
-  await wait();
-  checkEmail(email);
-  return { ok: true };
-}
-
-// POST /v1/auth/verify {email, code, purpose: "signup" | "reset"} -> {token}
-export async function verifyCode(email, code, purpose) {
-  await wait();
-  const noAccount = purpose === "reset" && !users.has(normalize(email)); // the backend never sent this email a code
-  if (code !== FAKE_CODE || noAccount) throw new Error("That code is wrong. Check your email and try again.");
-  return { token: `${purpose}:${normalize(email)}` };
-}
-
-// POST /v1/auth/set-password {token, password, phone, gender} -> {ok}   (phone + gender only for a new account,
-// e.g. "+919876543210", "Female" | "Male" | "Prefer not to say"; gender picks the default profile picture)
-// The token says whether this is a new account or a reset. A new account needs a mobile number.
-export async function setPassword(token, password, phone, gender) {
-  await wait();
-  const [purpose, email] = (token || "").split(":");
-  if (!email) throw new Error("This link has expired. Please start again.");
-  if (password.length < 8) throw new Error("Password must be at least 8 characters.");
-  if (purpose === "signup") {
-    if (!isMobile(phone ?? "")) throw new Error("Enter your 10-digit mobile number.");
-    profiles.set(email, { ...profiles.get(email), phone: `+91${phone}`, gender: gender ?? null });
-  } else if (!users.has(email)) {
-    throw new Error("No account found for this email.");
+// One request to the backend. Its errors are {code, message}: thrown as an Error with .code (and .fields for bad input),
+// so screens show message and branch on code. Signed-in calls send the session's token.
+async function call(path, { method = "POST", body, auth = false } = {}) {
+  const token = auth ? getSession()?.token : null;
+  let res;
+  try {
+    res = await fetch(`${API}${path}`, {
+      method,
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw Object.assign(new Error("Can’t reach Cpool. Check your internet and try again."), { code: "network" });
   }
-  users.set(email, password);
-  return { ok: true };
+  const data = await res.json().catch(() => null);
+  // 401 = the saved login no longer works (signed out on another phone, password changed, account deleted).
+  if (auth && res.status === 401) {
+    clearSession();
+    router.replace({ pathname: "/welcome", params: { notice: "You were signed out. Please sign in again." } });
+  }
+  // Every backend reply is JSON; anything else (e.g. EXPO_PUBLIC_API_URL missing, so the request hit Metro) is an error, never a fake success.
+  if (!res.ok || !data) throw Object.assign(new Error(data?.message ?? "Something went wrong. Please try again."), { code: data?.code, fields: data?.fields });
+  return data;
 }
 
-// POST /v1/auth/login {email, password} -> {token, role, vehicle, phone, gender}
-// role is null on the first sign-in, which sends the user to first-time setup.
-// Errors carry a code: "not_registered" (no account for this email) or "wrong_password".
-// POST /v1/me/password {current, new} → { ok }. Error if the current password is wrong.
+// POST /v1/auth/signup {email} -> sends a code. Errors: not_work_email, already_registered
+export const signup = (email) => call("/v1/auth/signup", { body: { email: normalize(email) } });
+
+// POST /v1/auth/forgot {email} -> sends a code (same answer whether or not the account exists)
+export const forgotPassword = (email) => call("/v1/auth/forgot", { body: { email: normalize(email) } });
+
+// POST /v1/auth/verify {email, code, purpose: "signup" | "reset"} -> {token}. Errors: wrong_code, code_expired, too_many_tries
+export const verifyCode = (email, code, purpose) => call("/v1/auth/verify", { body: { email: normalize(email), code, purpose } });
+
+// POST /v1/auth/set-password {token, password, phone, gender} -> {ok}. phone + gender only for a new account
+// (10 digits, "Female" | "Male" | "Prefer not to say"); a reset token ignores them.
+export const setPassword = (token, password, phone, gender) =>
+  call("/v1/auth/set-password", { body: { token, password, ...(phone ? { phone } : {}), ...(gender ? { gender } : {}) } });
+
+// POST /v1/auth/login {email, password} -> {token, role, vehicle, phone, gender}. role is null on the first sign-in.
+// Errors: not_registered, wrong_password, account_disabled
+export const login = (email, password) => call("/v1/auth/login", { body: { email: normalize(email), password } });
+
+// POST /v1/auth/logout -> {ok}: the token stops working on the server.
+export const logout = () => call("/v1/auth/logout", { auth: true });
+
+// POST /v1/me/password {current, new} -> {ok, token}. Other phones are signed out, so this phone keeps the new token.
 export async function changePassword(email, current, next) {
-  await wait();
-  if (users.get(normalize(email)) !== current) throw new Error("Your current password is incorrect.");
-  users.set(normalize(email), next);
+  const { token } = await call("/v1/me/password", { body: { current, new: next }, auth: true });
+  updateSession({ token });
   return { ok: true };
 }
 
-export async function login(email, password) {
-  await wait();
-  checkEmail(email);
-  if (!users.has(normalize(email))) {
-    throw Object.assign(new Error("No account found for this email."), { code: "not_registered" });
-  }
-  if (users.get(normalize(email)) !== password) {
-    throw Object.assign(new Error("Email or password is incorrect"), { code: "wrong_password" });
-  }
-  const profile = profiles.get(normalize(email)) ?? {};
-  return { token: "fake-token", role: profile.role ?? null, vehicle: profile.vehicle ?? null, phone: profile.phone ?? null, gender: profile.gender ?? null };
-}
+// PATCH /v1/me {role: "guest" | "host"} -> your profile
+export const setRole = (email, role) => call("/v1/me", { method: "PATCH", body: { role }, auth: true });
 
-// PUT /v1/me {role: "guest" | "host"} -> {ok}
-export async function setRole(email, role) {
-  await wait();
-  profiles.set(normalize(email), { ...profiles.get(normalize(email)), role });
-  return { ok: true };
-}
+// POST /v1/me/vehicles {type, number, model, mfgMonth, mfgYear, colour, seats, helmet}. The RC photo is never uploaded;
+// only the details read from it. Error: vehicle_exists when the plate is already on Cpool.
+export const addVehicle = (email, vehicle) => call("/v1/me/vehicles", { body: vehicle, auth: true });
 
-// POST /v1/me/vehicles {type, number, model, mfgMonth, mfgYear, colour, seats, helmet} -> {ok}
-// The RC photo is never uploaded; only the details read from it.
-// Plates already on Cpool (plate -> email). The backend refuses a second one the same way: code "vehicle_exists".
-const plates = new Map();
-export async function addVehicle(email, vehicle) {
-  await wait();
-  const owner = plates.get(vehicle.number);
-  if (owner) {
-    const message = owner === normalize(email) ? "You’ve already added this vehicle." : "This vehicle is already registered on Cpool. If it’s yours, contact the Cpool admin.";
-    throw Object.assign(new Error(message), { code: "vehicle_exists" });
-  }
-  plates.set(vehicle.number, normalize(email));
-  profiles.set(normalize(email), { ...profiles.get(normalize(email)), vehicle });
-  return { ok: true };
-}
-
-// POST /v1/me/delete {password} → { ok }: deletes the account and frees its number plates. Error code "wrong_password".
-export async function deleteAccount(email, password) {
-  await wait();
-  const key = normalize(email);
-  if (users.get(key) !== password) throw Object.assign(new Error("That password is wrong. Try again."), { code: "wrong_password" });
-  users.delete(key);
-  profiles.delete(key);
-  plates.forEach((owner, plate) => owner === key && plates.delete(plate));
-  return { ok: true };
-}
+// POST /v1/me/delete {password} -> {ok}. Errors: wrong_password, already_on_trip
+export const deleteAccount = (email, password) => call("/v1/me/delete", { body: { password }, auth: true });
 
 // ---------- Rides (example data until the backend is ready) ----------
 

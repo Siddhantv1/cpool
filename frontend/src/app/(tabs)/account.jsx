@@ -6,7 +6,7 @@ import { Alert, Image, Linking, Pressable, ScrollView, Switch, Text, View } from
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PersonAvatar } from "../../components/RideUI";
 import { getAppearance, setAppearance, useTheme } from "../../constants/theme";
-import { setRole } from "../../lib/api";
+import { logout, setRole } from "../../lib/api";
 import { OFFICES } from "../../lib/mock";
 import { resetDraft } from "../../lib/onboarding";
 import { clearSession, displayName, getSession, updateSession } from "../../lib/session";
@@ -85,6 +85,7 @@ export default function Account() {
   }
   const editProfile = () => router.push("/edit-profile");
   function logOut() {
+    logout().catch(() => {}); // the token stops working on the server too
     clearSession();
     router.replace("/welcome");
   }
