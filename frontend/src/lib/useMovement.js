@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { onRideTick } from "./live";
 import { along } from "./route";
 
 // Moves a point along `coords` over `durationMs`. Pass null coords to wait (e.g. while the route loads).
@@ -17,7 +18,9 @@ export function useMovement(coords, durationMs, { onNear, nearAt = 0.8, onArrive
     if (!coords) return;
     fired.current = { near: false, arrive: false };
     const start = Date.now();
-    const id = setInterval(() => {
+    let done = false;
+    const tick = () => {
+      if (done) return;
       const next = Math.min(1, (Date.now() - start) / durationMs);
       setProgress({ coords, t: next });
       if (next >= nearAt && !fired.current.near) {
@@ -25,14 +28,20 @@ export function useMovement(coords, durationMs, { onNear, nearAt = 0.8, onArrive
         callbacks.current.onNear?.();
       }
       if (next >= 1) {
+        done = true;
         clearInterval(id);
         if (!fired.current.arrive) {
           fired.current.arrive = true;
           callbacks.current.onArrive?.(coords); // which route finished, so a late timer can't mark the next one
         }
       }
-    }, 120);
-    return () => clearInterval(id);
+    };
+    const id = setInterval(tick, 120);
+    const stopTicks = onRideTick(tick); // keeps moving while the phone is locked during a ride
+    return () => {
+      clearInterval(id);
+      stopTicks();
+    };
   }, [coords, durationMs, nearAt]);
 
   return coords ? { t, ...along(coords, t) } : { t: 0, point: null, heading: 0, done: [] };

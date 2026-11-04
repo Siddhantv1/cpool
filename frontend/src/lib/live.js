@@ -36,6 +36,11 @@ export function onIslandAction(fn) {
   const sub = Live?.addListener?.("onIslandAction", fn);
   return () => sub?.remove();
 }
+// Every second during a ride, from Android: JS timers stop when Cpool has nothing on screen (e.g. phone locked).
+export function onRideTick(fn) {
+  const sub = Live?.addListener?.("onRideTick", fn);
+  return () => sub?.remove();
+}
 // A line in Android's log (tag CpoolLive): used when a card update fails, so a broken update is never silent again.
 function liveLog(message) {
   try {

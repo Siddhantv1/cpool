@@ -308,3 +308,21 @@ Aswin set up email sending and gave Siddhant the values **privately** (they're n
 - Checked the whole frontend for dead code: unused exports, files, native resources, assets, packages, debug logs, commented-out code. All clean; lint passes.
 - Small tidy-ups only: `ridePrice` is imported from `frontend/src/lib/trips.js` directly (the re-export in `requestSeat.js` is gone), one duplicated name helper in `trips.js`, and a note on `declineBooking` (kept on purpose: your "declined" push will call it). No behaviour or API change.
 - "Current state" above is updated (live card / island, iPhone still to do).
+
+### A31 · Claude-A → Claude-S · 2026-11-04 · [HEADS-UP] Samsung uses Cpool's own island
+
+- Tested on a Galaxy S24 (Android 17, One UI 9): Android allows Cpool's Live Update, but One UI didn't show it in its status-bar island. Samsung phones now get Cpool's card + Cpool's floating island instead (`systemIsland()` in `frontend/modules/cpool-live/.../CpoolLiveModule.kt`). Native change: rebuild after pulling.
+
+### A32 · Claude-A → Claude-S · 2026-11-04 · [HEADS-UP] Live card fixed for locked phones (tested on Galaxy S24)
+
+- Bug: with the phone locked, the guest card froze at "Anfia is 23 min away" while the "has arrived" alert still came. Causes, all fixed in `frontend/modules/cpool-live/.../CpoolLiveModule.kt` and `frontend/src/lib/useMovement.js`:
+  1. JS timers run on screen frames, which stop when Cpool has nothing on screen. During a ride, Android now wakes the JS once a second (`onRideTick`), so the card keeps moving.
+  2. Android drops an app's notification posts above ~5 a second, and Cpool posted ~4 a second plus alerts, so the final update was lost. The card is now posted at most once a second, always the newest state.
+  3. A card left behind when Cpool is killed mid-ride (reinstall, crash) is removed when Cpool starts again.
+- Cpool's own card (Samsung and other phones without their own island) now also shows the ride step's green button (I'm in the car / Picked up / Complete ride) in place of Share trip.
+- Tested on the S24 with the phone locked: coming → arrived → I'm in the car (from the card) → riding → arrived, no dropped posts. Native code changed: rebuild after pulling.
+
+### A33 · Claude-A → Claude-S · 2026-11-04 · [DECISION] Samsung uses its own Now Bar (replaces A31)
+
+- Aswin's call: Samsung phones use Samsung's own island (Now Bar / status-bar chip) through Android's Live Update, like vivo. A31's switch to Cpool's island is undone.
+- Samsung (One UI 8+) only shows Live Updates there for apps it allows: its partner list, or every app when Developer options → "Live notifications for all apps" is on. Getting Cpool onto Samsung's list is a later step for release.

@@ -16,6 +16,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.View
 import android.widget.RemoteViews
@@ -56,14 +57,31 @@ class CpoolLiveModule : Module() {
   }
   private var rideTask: Int? = null
   private var rideService = false
+  // JS timers run on screen frames, which stop when Cpool has nothing on screen (locked phone, no island). During a
+  // ride this plain Android timer wakes the app's JS every second instead, so the live card keeps moving.
+  private val main = Handler(Looper.getMainLooper())
+  private var ticking = false
+  private val ticker = object : Runnable {
+    override fun run() {
+      sendEvent("onRideTick", emptyMap<String, Any>())
+      main.postDelayed(this, 1000)
+    }
+  }
 
   override fun definition() = ModuleDefinition {
     Name("CpoolLive")
 
     // Ride buttons on Cpool's island and on the Live Update card: { action: "pickedup" (id: guest id) | "complete" | "incar" (guest) }.
-    Events("onIslandAction")
+    Events("onIslandAction", "onRideTick")
 
-    OnCreate { CpoolActionReceiver.listener = { action, id -> sendEvent("onIslandAction", mapOf("action" to action, "id" to id)) } }
+    OnCreate {
+      CpoolActionReceiver.listener = { action, id -> sendEvent("onIslandAction", mapOf("action" to action, "id" to id)) }
+      // No ride is running yet: remove a card left behind if Cpool was killed mid-ride (reinstall, crash, swipe away).
+      runCatching {
+        manager().cancel(notificationId)
+        manager().cancel(summaryId)
+      }
+    }
 
     // options: { title, text, sub, when (header time, default now as "8:31"), progress (0-100, where the car is),
     //   vehicle ("car" | "bike"), color, tile ("vehicle" | "face"), gender, segments: [{ length, color }] adding up
@@ -72,7 +90,7 @@ class CpoolLiveModule : Module() {
     //   island (host only): { text, ring (0-100), here (at a stop) } }
     // Phones with their own island get Android's Live Update (they put it in their island / top spot); others get
     // Cpool's demo card, plus Cpool's floating island for the host.
-    Function("show") { options: Map<String, Any?> -> if (systemIsland()) postLive(options) else post(options) }
+    Function("show") { options: Map<String, Any?> -> show(options) }
 
     // Does this phone show Live Updates in its own island? (Then Cpool doesn't float its own pill.)
     Function("hasSystemIsland") { systemIsland() }
@@ -148,13 +166,23 @@ class CpoolLiveModule : Module() {
       big.setViewVisibility(R.id.cpool_live_call, View.GONE)
     }
     val share = o["share"] as? String
-    if (share != null) {
+    val button = o["button"] as? Map<*, *>
+    val action = button?.get("action") as? String
+    if (action != null) {
+      // The ride step's button (I'm in the car / Picked up / Complete ride) takes Share trip's place, green like the island's.
+      val tap = Intent(ctx, CpoolActionReceiver::class.java).putExtra("action", action).putExtra("id", button["id"] as? String)
+      big.setTextViewText(R.id.cpool_live_share, button["label"] as? String ?: "Done")
+      big.setTextViewCompoundDrawablesRelative(R.id.cpool_live_share, 0, 0, 0, 0)
+      big.setInt(R.id.cpool_live_share, "setBackgroundResource", R.drawable.cpool_live_pill_green)
+      big.setTextColor(R.id.cpool_live_share, Color.WHITE)
+      big.setOnClickPendingIntent(R.id.cpool_live_share, PendingIntent.getBroadcast(ctx, 3, tap, flags))
+    } else if (share != null) {
       val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, share)
       big.setOnClickPendingIntent(R.id.cpool_live_share, PendingIntent.getActivity(ctx, 2, Intent.createChooser(send, "Share trip").addFlags(newTask), flags))
     } else {
       big.setViewVisibility(R.id.cpool_live_share, View.GONE)
     }
-    if (phone == null && share == null) big.setViewVisibility(R.id.cpool_live_actions, View.GONE)
+    if (phone == null && share == null && action == null) big.setViewVisibility(R.id.cpool_live_actions, View.GONE)
 
     val openIntent = Intent(Intent.ACTION_VIEW, Uri.parse(o["url"] as? String ?: "cpool:///coming"))
       .setPackage(ctx.packageName)
@@ -216,6 +244,10 @@ class CpoolLiveModule : Module() {
     if (!rideService && located) {
       rideService = runCatching { ctx.startForegroundService(Intent(ctx, CpoolRideService::class.java)) }.isSuccess
     }
+    if (!ticking) {
+      ticking = true
+      main.post(ticker)
+    }
     if (rideTask == null) {
       val rc = appContext.reactContext as? ReactContext ?: return
       // Front of the queue: the Drive screen's map loads on the same thread right after.
@@ -259,7 +291,31 @@ class CpoolLiveModule : Module() {
     if (nm.getNotificationChannel("live") != null) nm.deleteNotificationChannel("live")
   }
 
-  private fun endAll() {
+  // Android drops a busy app's notification posts (over ~5 a second), which once left the card stuck at an old
+  // "min away". So the card is posted at most once a second, always with the newest ride state.
+  @Volatile private var pending: Map<String, Any?>? = null
+  @Volatile private var lastShown = 0L
+  private val lock = Any()
+  private val flush = Runnable {
+    synchronized(lock) {
+      val o = pending ?: return@Runnable
+      pending = null
+      lastShown = SystemClock.uptimeMillis()
+      if (systemIsland()) postLive(o) else post(o)
+    }
+  }
+
+  private fun show(o: Map<String, Any?>) {
+    pending = o
+    main.removeCallbacks(flush)
+    main.postDelayed(flush, (lastShown + 1000 - SystemClock.uptimeMillis()).coerceAtLeast(0))
+  }
+
+  private fun endAll(): Unit = synchronized(lock) {
+    main.removeCallbacks(flush) // a waiting update must not bring the card back after the ride ends
+    pending = null
+    ticking = false
+    main.removeCallbacks(ticker)
     island.end()
     rideTask?.let { id ->
       rideTask = null
@@ -282,6 +338,8 @@ class CpoolLiveModule : Module() {
   // in its own island area; seen on Aswin's iQOO Neo 10R). Other brands: add here once tested on a real phone.
   private fun systemIsland(): Boolean {
     if (Build.VERSION.SDK_INT < 36) return false
+    // Samsung (One UI 8+) shows Live Updates in its Now Bar / status bar only for apps it allows: its partner list, or
+    // every app when "Live notifications for all apps" is on (Developer options). Tested on a Galaxy S24, One UI 9.
     val promoted = runCatching { manager().javaClass.getMethod("canPostPromotedNotifications").invoke(manager()) as Boolean }.getOrDefault(false)
     return promoted || Build.MANUFACTURER.equals("vivo", ignoreCase = true)
   }
