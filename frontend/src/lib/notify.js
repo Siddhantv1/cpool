@@ -106,6 +106,20 @@ export async function requestNotificationPermission() {
   return p;
 }
 
+// Raw APNs/FCM token for the backend. The free Apple team build has no APNs entitlement, so callers use this only
+// after moving to the paid team and enabling remote notifications in app.json.
+export async function getPushDeviceToken() {
+  const permission = await Notifications.getPermissionsAsync().catch(() => null);
+  if (!permission?.granted) return null;
+  const token = await Notifications.getDevicePushTokenAsync().catch(() => null);
+  return token?.data ? { platform: Platform.OS, token: token.data } : null;
+}
+
+export function onPushDeviceToken(fn) {
+  const sub = Notifications.addPushTokenListener((token) => fn({ platform: Platform.OS, token: token.data }));
+  return () => sub.remove();
+}
+
 // Tapping a notification or one of its buttons. onAction(id, data) handles buttons that change ride state.
 export function useNotificationTaps(onAction) {
   const last = Notifications.useLastNotificationResponse();

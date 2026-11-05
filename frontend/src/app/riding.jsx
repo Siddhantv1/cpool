@@ -65,7 +65,7 @@ export default function Riding() {
     });
     // Keeps Cpool running so the card updates in the background. Safe to call again; also restarts it if the
     // Coming screen's clean-up ended the ride after this screen had opened.
-    startRide();
+    startRide("guest");
   }, [over, step, arrived, mins, eta, leg, h, drop]);
   useEffect(() => endLiveRide, []);
   const pins = [

@@ -69,7 +69,7 @@ export default function Coming() {
       share: here ? undefined : `I'm riding with ${host.name} (${host.plate}). Track me on Cpool.`,
       button: here ? { label: "I’m in the car", action: "incar" } : undefined,
     });
-    startRide(); // keeps Cpool running so the card updates in the background (safe to call again)
+    startRide("guest"); // iPhone guest updates need ActivityKit push when Cpool is in the background
   }, [host, leg, step, minsAway, phase, leftAt]);
   useEffect(() => endLiveRide, []);
   useEffect(() => onIslandAction(({ action }) => action === "incar" && router.replace("/riding")), []);
