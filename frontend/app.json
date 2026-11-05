@@ -8,7 +8,8 @@
     "scheme": "cpool",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.aswin.cpool.dev"
     },
     "android": {
       "adaptiveIcon": {
@@ -52,15 +53,19 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Cpool uses your location to show rides near you and your pickup point."
+          "locationWhenInUsePermission": "Cpool uses your location to show rides near you and your pickup point.",
+          "locationAlwaysAndWhenInUsePermission": "Cpool uses your location during a hosted ride for navigation and live ride updates.",
+          "isIosBackgroundLocationEnabled": true
         }
       ],
+      "@bacons/apple-targets",
       "@rnmapbox/maps",
       [
         "expo-notifications",
         {
           "icon": "./assets/images/notification-icon.png",
-          "color": "#0E6464"
+          "color": "#0E6464",
+          "enableRemoteNotifications": false
         }
       ],
       "expo-secure-store"

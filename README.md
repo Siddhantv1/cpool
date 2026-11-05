@@ -50,13 +50,40 @@ Every ride starts or ends at a Perficient office (Bellandur or Whitefield), by c
 ```bash
 cd frontend
 cp .env.example .env               # then paste your Mapbox public token (pk.…) into .env
-npm install
+npm ci
 npx expo run:android               # first time, or after adding a package with native code: builds and installs the app
-npx expo start                     # every day after that: then open Cpool on the phone
+npx expo start --dev-client        # every day after that: then open Cpool on the phone
 ```
 - **Expo Go is not supported:** use the development build that `expo run:android` installs.
 - **When to rebuild:** only after adding a package with native code. Ordinary code changes reload on the phone by themselves.
 - **`.env` is git-ignored.** Never commit a token; the repo is public.
+
+### macOS: run with the iOS Simulator
+
+Set `EXPO_PUBLIC_API_URL=http://localhost:8000` in `frontend/.env`. Then use two terminals.
+
+Backend:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m pip install -r requirements.txt   # first time, or when requirements.txt changes
+python manage.py migrate
+DJANGO_ALLOWED_HOSTS="localhost,127.0.0.1" python manage.py runserver 0.0.0.0:8000
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm ci                                      # first time, or when package-lock.json changes
+npx expo run:ios                            # first build, or after native/config changes
+npx expo start --dev-client --localhost     # normal daily start after Cpool is installed
+```
+
+Run only one frontend command at a time: `expo run:ios` starts Metro itself. Expo Go cannot load Mapbox or Cpool's native modules.
+
+For a real iPhone, replace `localhost` in `frontend/.env` with the Mac's Wi-Fi IP, add that IP to `DJANGO_ALLOWED_HOSTS`, and use `npx expo start --dev-client --lan`. The Mac and iPhone must be on the same Wi-Fi.
 
 ### Windows notes
 - **PowerShell blocks `npm` scripts:** if you see "running scripts is disabled", type `npm.cmd` / `npx.cmd` instead, or use Command Prompt.
@@ -106,9 +133,9 @@ frontend/
 Python 3.12 or newer:
 ```bash
 cd backend
-python -m venv .venv
-.venv\Scripts\activate              # macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate           # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
 python manage.py migrate            # also after pulling: applies database changes
 python manage.py createsuperuser    # once, for the admin panel (username = your email)
 python manage.py runserver          # http://localhost:8000

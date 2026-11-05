@@ -1,21 +1,21 @@
-// The live ride card in the notification shade (Android only; see modules/cpool-live).
-// Missing on iPhone and on app builds made before the module existed, so every call is a no-op there.
+// The live ride card: Android notification/island and iPhone Live Activity/Dynamic Island.
+// Missing on old app builds, so every call stays a no-op there.
 import { requireOptionalNativeModule } from "expo-modules-core";
 import { AppRegistry, Platform } from "react-native";
 import { askWith } from "./notify";
 
-const Live = Platform.OS === "android" ? requireOptionalNativeModule("CpoolLive") : null;
+const Live = Platform.OS === "web" ? null : requireOptionalNativeModule("CpoolLive");
 
 // Host driving: React Native pauses the app's timers in the background unless a background task is running. This one
 // never finishes by itself; the native side starts it on Start ride and ends it with the ride, so the drive, the card
 // and the island keep updating while the host is in Google Maps.
-if (Live) AppRegistry.registerHeadlessTask("CpoolRide", () => () => new Promise(() => {}));
+if (Platform.OS === "android" && Live) AppRegistry.registerHeadlessTask("CpoolRide", () => () => new Promise(() => {}));
 
 // Host taps Start ride: the ride service and background task start now, while Cpool is still on screen (the phone
 // may pause Cpool once it's in the background, before they'd get going). Safe to call again; ended by endLiveRide.
-export function startRide(title) {
+export function startRide(role) {
   try {
-    Live?.startRide?.(title ?? null);
+    Live?.startRide?.(Platform.OS === "ios" ? role ?? null : null);
   } catch {}
 }
 
@@ -41,6 +41,18 @@ export function onRideTick(fn) {
   const sub = Live?.addListener?.("onRideTick", fn);
   return () => sub?.remove();
 }
+// ActivityKit push token for server-driven guest updates. It is absent on the free Personal Team build.
+export function onLivePushToken(fn) {
+  const sub = Live?.addListener?.("onPushToken", fn);
+  return () => sub?.remove();
+}
+export function getLivePushToken() {
+  try {
+    return Live?.getPushToken?.() ?? null;
+  } catch {
+    return null;
+  }
+}
 // A line in Android's log (tag CpoolLive): used when a card update fails, so a broken update is never silent again.
 function liveLog(message) {
   try {
@@ -59,7 +71,7 @@ export function hasSystemIsland() {
 // Asked once per app start, on the Drive screen, with the next pickup in the preview pill ("Karthik · 6 min").
 let askedIsland = false;
 export function maybeAskForIsland(pill) {
-  if (askedIsland || !Live?.canShowIsland || canShowIsland() || hasSystemIsland()) return;
+  if (Platform.OS !== "android" || askedIsland || !Live?.canShowIsland || canShowIsland() || hasSystemIsland()) return;
   askedIsland = true;
   askWith({
     title: "See your next pickup over Maps",

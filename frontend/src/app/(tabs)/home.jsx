@@ -397,7 +397,7 @@ function HostSheet({ vehicle, when, onPickTime, timerRef }) {
           title="Start ride"
           style={{ height: rs(52), borderRadius: rs(26) }}
           onPress={() => {
-            startRide();
+            startRide("host");
             router.push("/drive");
           }}
         />

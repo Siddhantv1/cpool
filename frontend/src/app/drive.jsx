@@ -50,7 +50,7 @@ export default function Drive() {
   const n = passengers.length;
   const [arrivedOn, setArrivedOn] = useState(null); // the route (leg) whose stop you've reached
   // Ride service + background task (also started by the Start ride buttons); first, before the map loads.
-  useEffect(() => startRide(), []);
+  useEffect(() => startRide("host"), []);
   const [leaving, setLeaving] = useState(false); // ride completed: going Home
   const from = published?.from ?? HOME;
   const to = published?.to ?? OFFICES[0];
