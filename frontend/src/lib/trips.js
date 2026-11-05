@@ -1,8 +1,10 @@
 // Ride state on this phone (bookings as a guest, published ride and requests as a host).
 // shortcut: kept in memory and filled with example data, replace with API calls + push updates when the backend is ready.
+import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { playAlert } from "./alerts";
+import { confirmSheet } from "./confirm";
 import { alertIn, alertNow, cancelScheduled, remind } from "./notify";
 import { ALERTS, HOME, HOSTS, MEET_POINT, OFFICES, REQUESTS } from "./mock";
 
@@ -58,6 +60,8 @@ const alert = (kind, title, text, extra) => ({ id: `n${++nextAlert}`, kind, titl
 const first = (name) => name.split(" ")[0];
 export const markRead = (id) => set({ alerts: state.alerts.map((a) => (id === undefined || a.id === id ? { ...a, read: true } : a)) });
 export const removeAlert = (id) => set({ alerts: state.alerts.filter((a) => a.id !== id) });
+// Alerts → Clear: empties the list (rides and seat requests are kept; they live in their own state).
+export const clearAlerts = () => set({ alerts: [] });
 const hostWho = (h) => ({ initials: h.initials, color: h.color, gender: h.gender });
 const guestWho = (r) => ({ initials: r.initials, color: "#7C3AED", gender: r.gender });
 
@@ -83,8 +87,16 @@ export function myPickup(area) {
 export function bookRide(hostId, drop = OFFICES[0], pickup = myPickup()) {
   const host = hostById(hostId);
   set({ booking: { host, pickup, drop, status: "requested", at: Date.now() } });
+  // shortcut: the example host answers after 8 s (most accept, Meera says no); really the answer arrives as a push
+  // notification from the backend.
+  if (host.declines) {
+    answerTimer = setTimeout(() => {
+      playAlert("cancelled");
+      declineBooking();
+    }, 8000);
+    return;
+  }
   alertIn("answer", "ride", 8, { title: `${first(host.name)} accepted your request`, body: acceptedText(host, pickup), categoryIdentifier: "ride-accepted", data: { url: "/accepted", phone: host.phone } });
-  // shortcut: the example host accepts after 8 s; really the answer arrives as a push notification from the backend.
   answerTimer = setTimeout(() => {
     acceptBooking();
     playAlert("accepted");
@@ -120,9 +132,13 @@ function setBooking(status, kind, title, text, reason) {
 }
 const acceptBooking = () =>
   state.booking && setBooking("accepted", "accepted", `${first(state.booking.host.name)} accepted your request`, acceptedText(state.booking.host, state.booking.pickup));
-// The host said no. Not called yet: the backend's "declined" push will call it (the Cancelled screen already handles it).
-export const declineBooking = () =>
-  state.booking && setBooking("declined", "declined", `${first(state.booking.host.name)} couldn’t take you`, "Your seat request for tomorrow was declined.");
+// The host said no: the guest gets the alert and the Request declined page (Cancelled screen, kind "declined"), wherever
+// they are in the app. Called by the example host above; the backend's "declined" push should call it too.
+export function declineBooking() {
+  if (!state.booking) return;
+  setBooking("declined", "declined", `${first(state.booking.host.name)} couldn’t take you`, "Your seat request for tomorrow was declined.");
+  router.push({ pathname: "/cancelled", params: { kind: "declined" } });
+}
 export const cancelBooking = () =>
   state.booking && setBooking("cancelled", "cancelled", `${first(state.booking.host.name)} cancelled your ride`, "Reason: plans changed · find another ride for tomorrow.", "Plans changed");
 // You cancel: a pending request (withdraw) or an accepted ride with a reason.
@@ -134,21 +150,20 @@ export function withdrawBooking(reason) {
 // Asks before withdrawing a seat request that is still waiting for the host.
 export function confirmWithdraw(onDone) {
   const name = state.booking ? first(state.booking.host.name) : "The host";
-  Alert.alert("Withdraw your request?", `${name} won’t see it any more.`, [
-    { text: "Keep waiting", style: "cancel" },
-    {
-      text: "Withdraw",
-      style: "destructive",
-      onPress: () => {
-        if (state.booking?.status !== "requested") {
-          return Alert.alert(`${first} already accepted`, "Your seat is confirmed. To cancel, open the ride and tap Cancel ride.");
-        }
-        withdrawBooking();
-        clearBooking();
-        onDone?.();
-      },
+  confirmSheet({
+    title: "Withdraw your request?",
+    text: `${name} won’t see it any more. You can ask another host straight away.`,
+    keep: "Keep waiting",
+    confirm: "Withdraw",
+    onConfirm: () => {
+      if (state.booking?.status !== "requested") {
+        return Alert.alert(`${name} already accepted`, "Your seat is confirmed. To cancel, open the ride and tap Cancel ride.");
+      }
+      withdrawBooking();
+      clearBooking();
+      onDone?.();
     },
-  ]);
+  });
 }
 
 export function clearBooking() {
@@ -198,12 +213,16 @@ export const nextPickup = () => set({ leg: state.leg + 1 });
 export function confirmPickup(guestId) {
   if (state.passengers[state.leg]?.id === guestId) nextPickup();
 }
-export function cancelPublished() {
+// reason: what the host picked in the Cancel ride sheet (asked only when guests had been accepted).
+// shortcut: guests are only told on this phone's Alerts; the backend should push "<host> cancelled your ride" with the
+// reason to every accepted guest, which opens their Ride cancelled page (app/cancelled.jsx, kind "host").
+export function cancelPublished(reason) {
   if (!state.published) return;
   cancelScheduled("leave");
   REQUESTS.forEach((r) => cancelScheduled(`request-${r.id}`));
   const guests = state.passengers;
-  const text = guests.length ? `${guests.map((p) => first(p.name)).join(", ")} ${guests.length === 1 ? "has" : "have"} been told` : "No one had booked yet";
+  const told = guests.length ? `${guests.map((p) => first(p.name)).join(", ")} ${guests.length === 1 ? "has" : "have"} been told` : "No one had booked yet";
+  const text = reason ? `${told} · Reason: ${reason.charAt(0).toLowerCase()}${reason.slice(1)}` : told;
   set({ published: null, passengers: [], requests: [], leg: 0, alerts: [alert("cancelled", `You cancelled your ride · ${state.published.when}`, text, guests.length ? { who: guestWho(guests[0]) } : {}), ...state.alerts] });
 }
 export function finishHosting() {

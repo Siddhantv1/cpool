@@ -1,11 +1,11 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { Redirect, router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { Alert, Linking, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
 import { ActionRow, Avatar, call, MapSheet, RoundButton, SosButton } from "../components/RideUI";
-import { useTheme } from "../constants/theme";
+import { fonts, useTheme } from "../constants/theme";
 import { arriveAt, useRoute, walkLabel } from "../lib/directions";
 import { endLiveRide, maybeAskForIsland, onIslandAction, showLiveRide, startRide, vehicleColour } from "../lib/live";
 import { HOME, OFFICES } from "../lib/mock";
@@ -176,54 +176,76 @@ export default function Drive() {
         <LiveMap route={route?.coords} walks={passenger && guestWalk ? [guestWalk.coords] : []} done={done} pins={pins} vehicle={current ? { point: move.point, heading: move.heading, self: true } : null} />
       </View>
 
-      <View style={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.md }} accessibilityLiveRegion="polite">
-        <View style={{ backgroundColor: colors.green, borderTopLeftRadius: radius.lg + 2, borderTopRightRadius: radius.lg + 2, borderBottomLeftRadius: rs(4), borderBottomRightRadius: rs(4), padding: spacing.md, flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-          <View style={{ width: rs(48), height: rs(48), borderRadius: rs(12), backgroundColor: colors.onImageInk + "2E", alignItems: "center", justifyContent: "center" }}>
-            <MaterialCommunityIcons name={turn?.icon ?? "navigation-variant"} size={rs(28)} color={colors.onGreen} />
+      {/* Turn card (approved round 3): dark, a blue turn tile, the distance and instruction, then the next stop. */}
+      <View style={{ marginTop: insets.top + rs(8), marginHorizontal: rs(12), backgroundColor: colors.ink, borderRadius: rs(22), overflow: "hidden", elevation: 8, shadowColor: "#0F141E", shadowOpacity: 0.3, shadowRadius: 18, shadowOffset: { width: 0, height: 8 } }} accessibilityLiveRegion="polite">
+        <View style={{ flexDirection: "row", alignItems: "center", gap: rs(14), padding: rs(14), paddingBottom: rs(12) }}>
+          <View style={{ width: rs(54), height: rs(54), borderRadius: rs(16), backgroundColor: colors.primary, alignItems: "center", justifyContent: "center" }}>
+            <MaterialCommunityIcons name={turn?.icon ?? "navigation-variant"} size={rs(30)} color={colors.onPrimary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.onGreen, fontSize: rf(24), fontWeight: "800" }}>{turn ? distanceText(turn.inKm) : "…"}</Text>
-            <Text style={{ color: colors.onGreen, fontWeight: "700" }} numberOfLines={2}>{turn ? turn.text : "Finding the route…"}</Text>
+            <Text style={{ color: colors.onInk, fontFamily: fonts.extrabold, fontSize: rf(28), lineHeight: rf(33), letterSpacing: -0.6 }}>{turn ? distanceText(turn.inKm) : "…"}</Text>
+            <Text numberOfLines={2} style={{ color: colors.onInk + "BF", fontFamily: fonts.semibold, fontSize: rf(14) }}>{turn ? turn.text : "Finding the route…"}</Text>
           </View>
         </View>
-        <View style={{ backgroundColor: colors.green, opacity: 0.85, borderBottomLeftRadius: radius.md + 2, borderBottomRightRadius: radius.md + 2, marginTop: 2, paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, flexDirection: "row", justifyContent: "space-between" }}>
-          <Text style={{ color: colors.onGreen, fontSize: rf(12), fontWeight: "600" }}>{passenger ? `Then pick up ${passenger.name.split(" ")[0]}` : `Then drop at ${to.name}`}</Text>
-          <Text style={{ color: colors.onGreen, fontSize: rf(12), fontWeight: "600" }}>{minsLeft ? `${minsLeft} min · ${(current.km - travelled).toFixed(1)} km` : ""}</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", gap: rs(10), paddingHorizontal: rs(16), paddingVertical: rs(9), backgroundColor: colors.onInk + "12" }}>
+          <Text numberOfLines={1} style={{ flexShrink: 1, color: colors.onInk + "BF", fontFamily: fonts.semibold, fontSize: rf(12.5) }}>
+            {passenger ? "Then pick up " : "Then drop at "}
+            <Text style={{ color: colors.onInk, fontFamily: fonts.bold }}>{passenger ? firstName(passenger) : to.name}</Text>
+          </Text>
+          <Text style={{ color: colors.onInk + "BF", fontFamily: fonts.semibold, fontSize: rf(12.5) }}>{minsLeft ? `${minsLeft} min · ${(current.km - travelled).toFixed(1)} km` : ""}</Text>
         </View>
       </View>
 
-      <View style={{ position: "absolute", right: spacing.md, top: insets.top + 150, gap: spacing.sm, alignItems: "center" }}>
+      <View style={{ position: "absolute", right: rs(12), top: insets.top + rs(142), gap: spacing.sm, alignItems: "center" }}>
         <SosButton />
-        <RoundButton label="Navigate with Google Maps" onPress={() => openGoogleMaps(target)} background={colors.primary} icon={<MaterialCommunityIcons name="navigation-variant" size={rs(22)} color={colors.onPrimary} />} />
-        <Text style={{ color: colors.text, backgroundColor: colors.background, fontSize: rf(10), fontWeight: "700", paddingHorizontal: rs(5), borderRadius: rs(6), overflow: "hidden" }}>Google Maps</Text>
+        <RoundButton label="Navigate with Google Maps" onPress={() => openGoogleMaps(target)} icon={<MaterialCommunityIcons name="navigation-variant" size={rs(22)} color={colors.primary} />} />
+        <Text style={{ marginTop: -rs(4), color: colors.text, backgroundColor: colors.background, fontFamily: fonts.bold, fontSize: rf(10.5), paddingHorizontal: rs(6), paddingVertical: rs(1), borderRadius: rs(7), overflow: "hidden" }}>Maps</Text>
       </View>
 
       <View style={{ flex: 1 }} />
       <MapSheet>
         {passenger ? (
           <>
-            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-              <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>Next pickup</Text>
-              <Text style={{ color: colors.textMuted, fontSize: rf(12), fontWeight: "600" }}>
-                {leg + 1} of {n}
-              </Text>
+            {/* Your stops in order, the next one highlighted. */}
+            <View accessible accessibilityLabel={`Stops: ${[...passengers.slice(leg).map(firstName), stopLabel(to)].join(", then ")}`} style={{ flexDirection: "row", alignItems: "center", gap: rs(6) }}>
+              {[...passengers.slice(leg), to].map((p, i, all) => {
+                const next = i === 0;
+                const end = i === all.length - 1;
+                return (
+                  <Fragment key={p.id}>
+                    {i ? <View style={{ flex: 1, minWidth: rs(8), height: 2, borderRadius: 1, backgroundColor: i === 1 ? colors.purple + "66" : colors.line }} /> : null}
+                    <View style={{ flexShrink: 1, flexDirection: "row", alignItems: "center", gap: rs(5) }}>
+                      <View style={{ width: rs(10), height: rs(10), borderRadius: end ? rs(3) : rs(5), backgroundColor: next ? colors.purple : end ? colors.border : "transparent", borderWidth: next || end ? 0 : 2, borderColor: colors.border }} />
+                      <Text numberOfLines={1} style={{ flexShrink: 1, color: next ? colors.purple : colors.textMuted, fontFamily: fonts.bold, fontSize: rf(12) }}>
+                        {end ? stopLabel(to) : firstName(p)}
+                      </Text>
+                    </View>
+                  </Fragment>
+                );
+              })}
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-              <Avatar initials={passenger.initials} gender={passenger.gender} color="#7C3AED" />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: rs(12) }}>
+              <Avatar initials={passenger.initials} gender={passenger.gender} color="#7C3AED" size={rs(48)} />
               <View style={{ flex: 1 }}>
-                <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{passenger.name}</Text>
-                <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{passenger.pickup} · {passenger.pickupTime}</Text>
+                <Text style={{ color: colors.textMuted, fontFamily: fonts.bold, fontSize: rf(11.5), letterSpacing: 0.4 }}>
+                  NEXT PICKUP · {leg + 1} OF {n}
+                </Text>
+                <Text numberOfLines={1} style={{ color: colors.text, fontFamily: fonts.extrabold, fontSize: rf(17) }}>{passenger.name}</Text>
+                <Text numberOfLines={1} style={{ color: colors.textMuted, fontFamily: fonts.regular, fontSize: rf(13) }}>
+                  {passenger.pickup} · {passenger.pickupTime}
+                </Text>
               </View>
-              <Pressable onPress={() => call(passenger.phone)} accessibilityRole="button" accessibilityLabel={`Call ${passenger.name}`} style={{ width: rs(42), height: rs(42), borderRadius: rs(21), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+              <Pressable onPress={() => call(passenger.phone)} accessibilityRole="button" accessibilityLabel={`Call ${passenger.name}`} style={{ width: rs(44), height: rs(44), borderRadius: rs(22), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
                 <MaterialCommunityIcons name="phone-outline" size={rs(19)} color={colors.text} />
               </Pressable>
             </View>
             {guestWalk ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm, backgroundColor: guestWaiting ? colors.greenSurface : colors.surface, borderRadius: radius.lg, padding: spacing.sm + 4 }} accessibilityLiveRegion="polite">
-                <MaterialCommunityIcons name={guestWaiting ? "check-circle" : "walk"} size={rs(18)} color={guestWaiting ? colors.green : "#7C3AED"} />
-                <Text style={{ flex: 1, color: guestWaiting ? colors.green : colors.text, fontWeight: "700", fontSize: fontSize.sm }}>
-                  {guestWaiting ? `${passenger.name.split(" ")[0]} is waiting at the pickup` : `${passenger.name.split(" ")[0]} is walking to the pickup · ${walkLabel(guestLeftM / 1000)} left`}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: rs(10), backgroundColor: guestWaiting ? colors.greenSurface : colors.purpleSurface, borderRadius: rs(14), paddingVertical: rs(11), paddingHorizontal: rs(13) }} accessibilityLiveRegion="polite">
+                <MaterialCommunityIcons name={guestWaiting ? "check-circle" : "walk"} size={rs(18)} color={guestWaiting ? colors.green : colors.purple} />
+                <Text style={{ flex: 1, color: guestWaiting ? colors.success : colors.purple, fontFamily: fonts.semibold, fontSize: rf(13.5) }}>
+                  {guestWaiting ? `${firstName(passenger)} is waiting at the pickup` : `${firstName(passenger)} is walking to the pickup`}
                 </Text>
+                {guestWaiting ? null : <Text style={{ color: colors.purple, fontFamily: fonts.extrabold, fontSize: rf(13.5) }}>{walkLabel(guestLeftM / 1000)}</Text>}
               </View>
             ) : null}
             <ActionRow left={{ title: "No-show", onPress: nextLeg }} right={{ title: "Picked up", green: true, wide: true, onPress: nextLeg }} />

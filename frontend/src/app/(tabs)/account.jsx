@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { PersonAvatar } from "../../components/RideUI";
 import { getAppearance, setAppearance, useTheme } from "../../constants/theme";
 import { logout, setRole } from "../../lib/api";
+import { mapTelemetryOn, setMapTelemetry } from "../../lib/mapbox";
 import { OFFICES } from "../../lib/mock";
 import { resetDraft } from "../../lib/onboarding";
 import { clearSession, displayName, getSession, updateSession } from "../../lib/session";
@@ -93,7 +94,13 @@ export default function Account() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
-        <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xl - 4, fontWeight: "800" }}>Account</Text>
+        {/* No tab bar any more: back to Home (Android's back button does the same). */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm + 4 }}>
+          <Pressable onPress={() => router.navigate("/home")} accessibilityRole="button" accessibilityLabel="Back to Home" hitSlop={6} style={{ width: rs(40), height: rs(40), borderRadius: rs(20), backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="chevron-back" size={rs(22)} color={colors.text} />
+          </Pressable>
+          <Text accessibilityRole="header" style={{ color: colors.text, fontSize: fontSize.xl - 4, fontWeight: "800" }}>Account</Text>
+        </View>
 
         {/* Profile header */}
         <View style={{ borderRadius: radius.lg + 6, overflow: "hidden", backgroundColor: colors.surface }}>
@@ -224,6 +231,22 @@ export default function Account() {
             }
           />
           <Row icon="key-outline" title="Change password" onPress={() => router.push("/change-password")} />
+          {/* Mapbox needs this opt-out in the app since their (i) map button, which had it, is hidden on our maps. */}
+          <Row
+            icon="analytics-outline"
+            title="Mapbox telemetry"
+            subtitle="Send anonymous map usage to Mapbox"
+            right={
+              <Switch
+                value={mapTelemetryOn()}
+                onValueChange={(on) => {
+                  setMapTelemetry(on);
+                  refresh((n) => n + 1);
+                }}
+                accessibilityLabel="Mapbox telemetry"
+              />
+            }
+          />
           <Row icon="lock-closed-outline" title="Privacy & data" onPress={soon("Privacy settings")} />
           <Row icon="help-circle-outline" title="Help & support" onPress={soon("Help & support")} />
           <Row icon="trash-outline" title="Delete account" danger onPress={() => router.push("/delete-account")} />

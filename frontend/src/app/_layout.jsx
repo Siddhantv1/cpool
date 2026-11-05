@@ -1,7 +1,10 @@
+import { useFonts } from "expo-font";
 import { router, Stack } from "expo-router";
+import { fontFiles } from "../constants/theme";
 import { useEffect } from "react";
 import { StatusBar } from "expo-status-bar";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import ConfirmSheet from "../components/ConfirmSheet";
 import NotifyAsk from "../components/NotifyAsk";
 import OfflineGate from "../components/OfflineGate";
 import { setupNotifications, useNotificationTaps } from "../lib/notify";
@@ -29,6 +32,9 @@ export default function RootLayout() {
     setupNotifications();
   }, []);
   useNotificationTaps(onNotificationAction);
+  // Bundled font files load in a few milliseconds; if they ever fail, the app carries on with the system font.
+  const [fontsLoaded, fontError] = useFonts(fontFiles);
+  if (!fontsLoaded && !fontError) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StatusBar style="auto" />
@@ -36,6 +42,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }} />
       <OfflineGate />
       <NotifyAsk />
+      <ConfirmSheet />
     </GestureHandlerRootView>
   );
 }
