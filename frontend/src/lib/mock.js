@@ -32,7 +32,8 @@ export const HOSTS = [
   { id: "h4", initials: "RK", color: "#B45309", name: "Rahul K", gender: "Male", phone: "+910000000005", vehicle: "Honda Activa 6G", type: "bike", plate: "KA 05 HX 2290", start: [77.6302, 12.9385], from: "Ejipura",
     time: "8:50", walkTo: "200 m", ride: "6.8 km", walkFrom: "120 m", seatsFree: 1, seatsTotal: 1, helmet: false, match: "Full match", full: true },
   { id: "h3", initials: "MJ", color: "#0F766E", name: "Meera J", gender: "Female", phone: "+910000000000", vehicle: "Grey Tata Nexon", type: "car", plate: "KA 53 MD 2205", start: [77.648, 12.918], from: "HSR Layout",
-    time: "8:55", walkTo: "750 m", ride: "5.2 km", walkFrom: "350 m", seatsFree: 3, seatsTotal: 4, match: "Partial match · longer walk", full: false },
+    time: "8:55", walkTo: "750 m", ride: "5.2 km", walkFrom: "350 m", seatsFree: 3, seatsTotal: 4, match: "Partial match · longer walk", full: false,
+    declines: true }, // example host who says no to seat requests, so the Request declined page can be tried
 ];
 
 // Seat requests that arrive after you publish a ride (as a host). from = where the guest starts walking; coords = their pickup.
@@ -50,7 +51,3 @@ export const ALERTS = [
   { id: "a3", kind: "cancelled", title: "Rohan cancelled Monday's ride", text: "Your other requests stayed open", minsAgo: 5 * 24 * 60, who: { initials: "RP", color: "#0E7490", gender: "Male" } },
 ];
 
-export const PAST_RIDES = [
-  { id: "p1", when: "Mon 26 Oct · 8:35 AM", from: "Koramangala", to: "Perficient Bellandur", with: "Ananya M", role: "guest" },
-  { id: "p2", when: "Fri 23 Oct · 6:05 PM", from: "Perficient Bellandur", to: "BTM Layout", with: "Karthik R", role: "host" },
-];

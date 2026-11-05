@@ -5,7 +5,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, useColorScheme, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { NoMapToken } from "../components/LiveMap";
+import { MapAttribution, NoMapToken } from "../components/LiveMap";
 import { MapSheet, RoundButton } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
 import { goBack } from "../lib/nav";
@@ -83,13 +83,14 @@ export default function Pin() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <View style={{ flex: 1 }}>
         {hasMapboxToken ? (
-          <MapView style={{ flex: 1 }} styleURL={scheme === "dark" ? MAP_STYLES.dark : MAP_STYLES.light} scaleBarEnabled={false} compassEnabled={false} onMapIdle={(state) => onMoved(state.properties.center)}>
+          <MapView style={{ flex: 1 }} styleURL={scheme === "dark" ? MAP_STYLES.dark : MAP_STYLES.light} scaleBarEnabled={false} compassEnabled={false} attributionEnabled={false} onMapIdle={(state) => onMoved(state.properties.center)}>
             <Camera ref={camera} defaultSettings={{ centerCoordinate: start, zoomLevel: 16 }} />
             {located ? <UserLocation visible /> : null}
           </MapView>
         ) : (
           <NoMapToken />
         )}
+        {hasMapboxToken ? <MapAttribution /> : null}
         {/* The pin's tip sits exactly on the map centre. */}
         <View pointerEvents="none" style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, alignItems: "center", justifyContent: "center" }}>
           <View style={{ alignItems: "center", marginBottom: rs(46) }}>

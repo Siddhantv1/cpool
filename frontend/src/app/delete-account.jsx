@@ -66,7 +66,7 @@ export default function DeleteAccount() {
         title="Delete your account?"
         footer={
           <>
-            {button("Go to my ride", () => router.push("/rides"), colors.ink, colors.onInk)}
+            {button("Go to my ride", () => router.push("/home"), colors.ink, colors.onInk)}
             {button("Back", () => router.back(), colors.surface, colors.text)}
           </>
         }

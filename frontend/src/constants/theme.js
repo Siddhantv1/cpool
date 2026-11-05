@@ -36,6 +36,7 @@ export const colors = {
     greenSurface: "#E6F6EE",
     line: "#ECEDEF",
     danger: "#DC2626",
+    dangerSurface: "#FDECEC",
     route: "#1D4ED8", // ride line on every map (Cpool blue)
     // Ride results cards: soft blue border, 3D button edge, purple for a spare helmet
     cardLine: "#D6E2F5",
@@ -74,6 +75,7 @@ export const colors = {
     greenSurface: "#0B2A1E",
     line: "#2A2A2E",
     danger: "#EF4444",
+    dangerSurface: "#3A1416",
     route: "#60A5FA",
     cardLine: "#1E2B40",
     primaryEdge: "#1E40AF",
@@ -87,6 +89,17 @@ export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 };
 export const fontSize = { sm: 13, md: 16, lg: 20, xl: 28, xxl: 32 };
 
 export const radius = { md: 10, lg: 16, pill: 999 };
+
+// Plus Jakarta Sans for Home, Alerts and search (the approved demo). One file per weight: Android can't pick a weight
+// from a single custom family, so use these names alone (no fontWeight) in fontFamily. Loaded in app/_layout.jsx.
+export const fonts = { regular: "PJS-Regular", medium: "PJS-Medium", semibold: "PJS-SemiBold", bold: "PJS-Bold", extrabold: "PJS-ExtraBold" };
+export const fontFiles = {
+  "PJS-Regular": require("../../assets/fonts/PlusJakartaSans-Regular.ttf"),
+  "PJS-Medium": require("../../assets/fonts/PlusJakartaSans-Medium.ttf"),
+  "PJS-SemiBold": require("../../assets/fonts/PlusJakartaSans-SemiBold.ttf"),
+  "PJS-Bold": require("../../assets/fonts/PlusJakartaSans-Bold.ttf"),
+  "PJS-ExtraBold": require("../../assets/fonts/PlusJakartaSans-ExtraBold.ttf"),
+};
 
 // Appearance chosen in Account: "system" follows the phone, "light" / "dark" override it for the whole app.
 // The app starts in light; people can switch in Account → Appearance.

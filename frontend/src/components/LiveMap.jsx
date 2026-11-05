@@ -3,9 +3,9 @@ import { Camera, LineLayer, MapView, MarkerView, ShapeSource, UserLocation } fro
 import * as Location from "expo-location";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, Text, useColorScheme, View } from "react-native";
-import { useTheme } from "../constants/theme";
+import { fonts, useTheme } from "../constants/theme";
 import { registerMap } from "../lib/mapControl";
-import { hasMapboxToken, MAP_STYLES, toBounds } from "../lib/mapbox";
+import { hasMapboxToken, MAP_STYLES, MUTED_STYLES, toBounds } from "../lib/mapbox";
 import { boundsOf, lineFeature } from "../lib/route";
 
 // A pin on the map. kind: "start" | "pickup" | "office" | "guest" (a colleague walking to the pickup)
@@ -77,6 +77,18 @@ function Vehicle({ type, heading, self }) {
   );
 }
 
+// Mapbox's text attribution. Their (i) map button is off on every map (it opened a big dialog); Mapbox then asks for
+// this text on the map instead, and the telemetry switch from that dialog is in Account. at: where on the map
+// (default: where the (i) was, just right of the logo).
+export function MapAttribution({ at }) {
+  const { colors, rs, rf } = useTheme();
+  return (
+    <Text style={{ position: "absolute", ...(at ?? { left: 92, bottom: rs(8) }), color: colors.textMuted, backgroundColor: colors.background + "CC", fontFamily: fonts.medium, fontSize: rf(9.5), paddingHorizontal: rs(5), paddingVertical: rs(1), borderRadius: rs(4), overflow: "hidden" }}>
+      © Mapbox © OpenStreetMap
+    </Text>
+  );
+}
+
 // Shown instead of the map when .env has no Mapbox token (e.g. a fresh clone of the repo).
 export function NoMapToken() {
   const { colors, spacing, rs } = useTheme();
@@ -91,8 +103,8 @@ export function NoMapToken() {
 // route: the full line (null while it loads); done: the part already driven (shown grey)
 // pins: [{ id, kind, coords, label?, focused?, onPress? }]; vehicle: { point, heading, type, self }; walks: dotted walking lines
 // padding: space taken by cards on top / bottom; fit: points to frame (default: route + pins + walks) — pass a fixed list
-// so the camera stays still while the route or pins change.
-export default function LiveMap({ route, done, pins = [], vehicle, walks = [], padding: givenPadding, fit }) {
+// so the camera stays still while the route or pins change. muted: grey map and route (a cancelled trip).
+export default function LiveMap({ route, done, pins = [], vehicle, walks = [], padding: givenPadding, fit, muted }) {
   const { colors, rs } = useTheme();
   const padding = givenPadding ?? { top: rs(160), bottom: rs(300), left: rs(40), right: rs(40) };
   const scheme = useColorScheme();
@@ -160,12 +172,12 @@ export default function LiveMap({ route, done, pins = [], vehicle, walks = [], p
   return (
     <View style={{ flex: 1 }} onLayout={refit}>
       {/* Re-frame once the map has loaded and whenever its size changes: the first fit can use the wrong size while the screen lays out. */}
-      <MapView style={{ flex: 1 }} styleURL={scheme === "dark" ? MAP_STYLES.dark : MAP_STYLES.light} scaleBarEnabled={false} compassEnabled={false} onDidFinishLoadingMap={refit}>
+      <MapView style={{ flex: 1 }} styleURL={(muted ? MUTED_STYLES : MAP_STYLES)[scheme === "dark" ? "dark" : "light"]} scaleBarEnabled={false} compassEnabled={false} attributionEnabled={false} onDidFinishLoadingMap={refit}>
         {/* defaultSettings frames the first view; bounds re-frames when the route or pins change. */}
         <Camera ref={camera} defaultSettings={{ bounds: view.bounds, padding: view.padding }} bounds={view.bounds} padding={view.padding} animationDuration={500} />
         {located ? <UserLocation visible /> : null}
         <ShapeSource id="route" shape={lineFeature(route)}>
-          <LineLayer id="route-line" style={{ ...line, lineColor: colors.route }} />
+          <LineLayer id="route-line" style={{ ...line, lineColor: muted ? colors.textMuted : colors.route }} />
         </ShapeSource>
         {done && done.length > 1 ? (
           <ShapeSource id="done" shape={lineFeature(done)}>
@@ -195,6 +207,7 @@ export default function LiveMap({ route, done, pins = [], vehicle, walks = [], p
           </MarkerView>
         ) : null}
       </MapView>
+      <MapAttribution />
     </View>
   );
 }

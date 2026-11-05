@@ -1,24 +1,25 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
-import { ActionRow, Avatar, call, EtaCard, MapSheet, Plate, RoundButton, shareTrip, SosButton, Stops } from "../components/RideUI";
-import { useTheme } from "../constants/theme";
+import { Avatar, EtaCard, MapSheet, Plate, RoundButton, shareTrip, SosButton, Stops } from "../components/RideUI";
+import { fonts, useTheme } from "../constants/theme";
 import { arriveAt, useMeetRoute } from "../lib/directions";
 import { endLiveRide, showLiveRide, startRide, vehicleColour } from "../lib/live";
 import { HOSTS, MEET_POINT, OFFICES } from "../lib/mock";
-import { clearBooking, getTrips } from "../lib/trips";
+import { clearBooking, getTrips, ridePrice } from "../lib/trips";
 import { liveBar, trafficSegments } from "../lib/route";
 import { useMovement } from "../lib/useMovement";
 
 const CARD_AFTER_ARRIVAL_MS = 2 * 60000; // the live card stays this long after you arrive, then goes away
 const short = (time) => time.replace(/ (AM|PM)$/, "");
 
-// On the way to the office after pickup.
+// On the way to the office after pickup (approved round 3): the same ETA card as "host on the way", the trip in one box
+// and what to pay. No Share trip / Call buttons: you're in the car together, and Share is the round button on the map.
 export default function Riding() {
-  const { colors, spacing, fontSize, radius, rs } = useTheme();
+  const { colors, spacing, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const booking = getTrips().booking;
   const h = booking?.host ?? HOSTS[0];
@@ -71,6 +72,11 @@ export default function Riding() {
     { id: "start", kind: "start", coords: plan?.meet ?? pickup.coords },
     { id: "office", kind: "office", coords: drop.coords },
   ];
+  const first = h.name.split(" ")[0];
+  const price = ridePrice(h);
+  // The live card's bar, same as the island: driven part, traffic ahead (green / amber / red).
+  const bar = leg ? liveBar(arrived ? 100 : move.t * 100, 0, 100, trafficSegments(leg.coords, leg.congestion)) : [];
+  const txt = (style) => [{ color: colors.text, fontFamily: fonts.regular }, style];
 
   // Close every ride screen first, then clear the booking, so screens still in the back-stack don't redirect at the same time.
   function done() {
@@ -84,46 +90,60 @@ export default function Riding() {
       <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
         <LiveMap route={leg?.coords} done={leg ? move.done : null} pins={pins} vehicle={leg ? { point: move.point, heading: move.heading, type: h.type } : null} />
       </View>
-      <View style={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.md }}>
+      <View style={{ marginTop: insets.top + rs(8), marginHorizontal: rs(12) }}>
         <EtaCard
           big={arrived ? "0" : mins}
           title={arrived ? "You’ve arrived" : `To ${drop.name}`}
           subtitle={arrived ? "Have a good day at work" : leg ? `Arrive ${eta} · ${kmLeft.toFixed(1)} km left` : "Finding the route…"}
           live={!arrived}
+          bar={bar}
+          left={`Picked up ${short(h.time)}`}
+          right={arrived ? "Arrived" : `Arrive ${short(eta)}`}
         />
       </View>
-      <View style={{ position: "absolute", right: spacing.md, top: insets.top + 110, gap: spacing.sm }}>
+      <View style={{ position: "absolute", right: rs(12), top: insets.top + rs(150), gap: spacing.sm }}>
         <SosButton />
         <RoundButton icon="share-outline" label="Share trip" onPress={() => shareTrip(`I’m riding with ${h.name} (${h.plate}) to ${drop.name}${eta ? `, arriving about ${eta}` : ""}.`)} />
       </View>
 
       <View style={{ flex: 1 }} />
       <MapSheet>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-          <Avatar initials={h.initials} gender={h.gender} color={h.color} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: rs(12) }}>
+          <Avatar initials={h.initials} gender={h.gender} color={h.color} size={rs(46)} />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }} numberOfLines={1}>With {h.name.split(" ")[0]}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>{h.vehicle}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: rs(5) }}>
+              <Text numberOfLines={1} style={txt({ flexShrink: 1, fontFamily: fonts.extrabold, fontSize: rf(16) })}>With {first}</Text>
+              <MaterialCommunityIcons name="check-decagram" size={rs(15)} color={colors.green} accessibilityLabel="Verified" />
+            </View>
+            <Text numberOfLines={1} style={txt({ color: colors.textMuted, fontSize: rf(13) })}>{h.vehicle}</Text>
           </View>
           <Plate text={h.plate} />
         </View>
-        <View style={{ height: rs(6), borderRadius: rs(3), backgroundColor: colors.surface, overflow: "hidden" }} accessible accessibilityLabel={`Trip ${Math.round(move.t * 100)}% done`}>
-          <View style={{ width: `${Math.max(6, move.t * 100)}%`, height: "100%", backgroundColor: colors.green, borderRadius: rs(3) }} />
+        <View style={{ backgroundColor: colors.surface, borderRadius: rs(18), padding: rs(14) }}>
+          <Stops
+            stops={[
+              { title: "Picked up at the meet point", time: h.time, done: true },
+              { title: `Drop · ${drop.name}`, time: short(eta), done: arrived },
+            ]}
+          />
         </View>
-        <Stops
-          stops={[
-            { title: "Picked up at the meet point", time: h.time, done: true },
-            { title: `Drop · ${drop.name}`, time: short(eta), done: arrived },
-          ]}
-        />
+        {/* What to pay at the end: cash or UPI, outside the app. */}
+        <View accessible accessibilityLabel={`Pay ${first} ${price} rupees, cash or UPI`} style={{ flexDirection: "row", alignItems: "center", gap: rs(12), backgroundColor: colors.greenSurface, borderRadius: rs(18), padding: rs(12), paddingRight: rs(16) }}>
+          <View style={{ width: rs(40), height: rs(40), borderRadius: rs(13), backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+            <MaterialCommunityIcons name="currency-inr" size={rs(20)} color={colors.success} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={txt({ color: colors.success, fontFamily: fonts.bold, fontSize: rf(15) })}>Pay {first}</Text>
+            <Text style={txt({ color: colors.success, fontSize: rf(12.5) })}>Cash or UPI</Text>
+          </View>
+          <Text style={txt({ color: colors.success, fontFamily: fonts.extrabold, fontSize: rf(22), letterSpacing: -0.4 })}>₹{price}</Text>
+        </View>
         {arrived ? (
           <Pressable onPress={done} accessibilityRole="button" style={{ backgroundColor: colors.green, borderRadius: radius.lg, paddingVertical: spacing.md, alignItems: "center", flexDirection: "row", justifyContent: "center", gap: rs(6) }}>
             <Ionicons name="checkmark-circle" size={rs(18)} color={colors.onGreen} />
-            <Text style={{ color: colors.onGreen, fontWeight: "800", fontSize: fontSize.md }}>Done</Text>
+            <Text style={txt({ color: colors.onGreen, fontFamily: fonts.extrabold, fontSize: rf(16) })}>Done</Text>
           </Pressable>
-        ) : (
-          <ActionRow left={{ title: "Share trip", icon: "share-outline", onPress: () => shareTrip(`Riding with ${h.name} (${h.plate}).`) }} right={{ title: "Call", icon: "call-outline", onPress: () => call(h.phone) }} />
-        )}
+        ) : null}
       </MapSheet>
     </View>
   );

@@ -1,11 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { Redirect, router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Linking, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LiveMap from "../components/LiveMap";
 import { ActionRow, Avatar, call, EtaCard, MapSheet, Plate, RoundButton, shareTrip, SosButton } from "../components/RideUI";
-import { useTheme } from "../constants/theme";
+import { fonts, useTheme } from "../constants/theme";
 import { playAlert } from "../lib/alerts";
 import { arriveAt, useMeetRoute, useRoute, walkLabel } from "../lib/directions";
 import { km, liveBar, trafficSegments } from "../lib/route";
@@ -20,7 +20,7 @@ const DRIVE_MS = 20000; // shortcut: simulated drive to your pickup
 
 // The host is driving to your pickup point.
 export default function Coming() {
-  const { colors, spacing, fontSize, radius, rs, rf } = useTheme();
+  const { colors, spacing, radius, rs, rf } = useTheme();
   const insets = useSafeAreaInsets();
   const { booking } = useTrips();
   const [phase, setPhase] = useState("coming"); // coming → nearby → arrived
@@ -88,6 +88,10 @@ export default function Coming() {
   const first = h.name.split(" ")[0];
   const kmLeft = leg ? leg.km * (1 - move.t) : 0;
   const mins = leg ? Math.max(1, Math.round(leg.minutes * (1 - move.t))) : "–";
+  const here = phase === "arrived";
+  // The live ride card's bar, same as the island: driven part, traffic ahead (green / amber / red).
+  const bar = leg ? liveBar(here ? 100 : move.t * 100, 0, 100, trafficSegments(leg.coords, leg.congestion)) : [];
+  const txt = (style) => [{ color: colors.text, fontFamily: fonts.regular }, style];
   const pins = [
     ...(needsWalk ? [{ id: "me", kind: "start", coords: check.here ?? booking.pickup.coords }] : []),
     { id: "pickup", kind: "pickup", coords: meet ?? booking.pickup.coords },
@@ -100,25 +104,32 @@ export default function Coming() {
         <LiveMap route={plan?.route.coords} walks={walk ? [walk.coords] : []} done={leg ? move.done : null} pins={pins} vehicle={leg ? { point: move.point, heading: move.heading, type: h.type } : null} />
       </View>
 
-      <View style={{ paddingTop: insets.top + spacing.sm, paddingHorizontal: spacing.md }}>
-        {phase === "arrived" ? (
-          <EtaCard big="0" title={`${first} has arrived`} subtitle="Look for the number plate below" />
-        ) : (
-          <EtaCard big={mins} title={phase === "nearby" ? `${first} is nearby` : `${first} is on the way`} subtitle={leg ? `To your pickup · ${kmLeft.toFixed(1)} km away` : "Finding the route…"} />
-        )}
+      {/* ETA card (approved design): minutes, who and how far, LIVE, and the live card's progress bar. */}
+      <View style={{ marginTop: insets.top + rs(8), marginHorizontal: rs(12) }}>
+        <EtaCard
+          big={here ? "0" : mins}
+          title={here ? `${first} has arrived` : phase === "nearby" ? `${first} is nearby` : `${first} is on the way`}
+          subtitle={here ? "Look for the number plate below" : leg ? `To your pickup · ${kmLeft.toFixed(1)} km away` : "Finding the route…"}
+          live={!here}
+          bar={bar}
+          left={`Left ${leftAt}`}
+          right={`Pickup ${h.time}`}
+        />
       </View>
-      <View style={{ position: "absolute", right: spacing.md, top: insets.top + 110, gap: spacing.sm }}>
+      <View style={{ position: "absolute", right: rs(12), top: insets.top + rs(150), gap: spacing.sm }}>
         <SosButton />
         <RoundButton icon="share-outline" label="Share trip" onPress={() => shareTrip(`I'm riding with ${h.name} (${h.plate}) to ${booking.drop.name}.`)} />
       </View>
 
       <View style={{ flex: 1 }} />
       <MapSheet>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md }}>
-          <View style={{ width: rs(14), height: rs(14), borderRadius: rs(7), backgroundColor: "#7C3AED" }} />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: rs(12), backgroundColor: colors.purpleSurface, borderRadius: rs(18), padding: rs(12) }}>
+          <View style={{ width: rs(36), height: rs(36), borderRadius: rs(12), backgroundColor: colors.background, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="walk" size={rs(19)} color={colors.purple} />
+          </View>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: rf(11), fontWeight: "600" }}>Meet point</Text>
-            <Text style={{ color: check.arrived ? colors.green : colors.text, fontWeight: "700", fontSize: fontSize.md }} numberOfLines={2} accessibilityLiveRegion="polite">
+            <Text style={txt({ color: colors.purple, fontFamily: fonts.bold, fontSize: rf(12) })}>Meet point</Text>
+            <Text style={txt({ color: check.arrived ? colors.green : colors.text, fontFamily: fonts.extrabold, fontSize: rf(15) })} numberOfLines={2} accessibilityLiveRegion="polite">
               {!needsWalk
                 ? "On your street"
                 : check.arrived
@@ -129,20 +140,23 @@ export default function Coming() {
                       ? `${walkLabel(walk.km)} walk from ${booking.pickup.here ? "you" : booking.pickup.name}`
                       : "Working out the walk…"}
             </Text>
-            {needsWalk && !check.allowed ? <Text style={{ color: colors.textMuted, fontSize: rf(12) }}>Turn on location so {first} knows when you reach it.</Text> : null}
+            {needsWalk && !check.allowed ? <Text style={txt({ color: colors.textMuted, fontSize: rf(12) })}>Turn on location so {first} knows when you reach it.</Text> : null}
           </View>
           {walk && !check.arrived ? (
-            <Pressable onPress={() => meet && Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${meet[1]},${meet[0]}&travelmode=walking`)} accessibilityRole="button" accessibilityLabel="Walking directions in Google Maps" style={{ flexDirection: "row", alignItems: "center", gap: rs(4), backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 4, paddingVertical: spacing.sm }}>
-              <Ionicons name="walk" size={rs(14)} color={colors.onInk} />
-              <Text style={{ color: colors.onInk, fontWeight: "800", fontSize: rf(12) }}>Walk</Text>
+            <Pressable onPress={() => meet && Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${meet[1]},${meet[0]}&travelmode=walking`)} accessibilityRole="button" accessibilityLabel="Walking directions in Google Maps" style={{ flexDirection: "row", alignItems: "center", gap: rs(5), backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: rs(14), height: rs(36) }}>
+              <Ionicons name="walk" size={rs(15)} color={colors.onInk} />
+              <Text style={txt({ color: colors.onInk, fontFamily: fonts.bold, fontSize: rf(13) })}>Walk</Text>
             </Pressable>
           ) : null}
         </View>
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
-          <Avatar initials={h.initials} gender={h.gender} color={h.color} />
+          <Avatar initials={h.initials} gender={h.gender} color={h.color} size={rs(46)} />
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.text, fontWeight: "800", fontSize: fontSize.md }}>{h.name}</Text>
-            <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }}>{h.vehicle}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: rs(5) }}>
+              <Text style={txt({ fontFamily: fonts.extrabold, fontSize: rf(16) })}>{h.name}</Text>
+              <MaterialCommunityIcons name="check-decagram" size={rs(15)} color={colors.green} accessibilityLabel="Verified" />
+            </View>
+            <Text style={txt({ color: colors.textMuted, fontSize: rf(13) })}>{h.vehicle}</Text>
           </View>
           <Plate text={h.plate} />
         </View>
@@ -154,7 +168,7 @@ export default function Coming() {
         {phase === "nearby" ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }} accessibilityLiveRegion="polite">
             <Ionicons name="walk" size={rs(16)} color={colors.green} />
-            <Text style={{ color: colors.green, fontWeight: "700" }}>Start walking to the pickup point</Text>
+            <Text style={txt({ color: colors.green, fontFamily: fonts.bold })}>Start walking to the pickup point</Text>
           </View>
         ) : null}
       </MapSheet>

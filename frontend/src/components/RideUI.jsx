@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { AccessibilityInfo, Alert, Animated, Easing, Linking, Pressable, Share, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "../constants/theme";
+import { fonts, useTheme } from "../constants/theme";
 import { useMapControl } from "../lib/mapControl";
 
 // Pieces shared by the ride screens: avatar, number plate, SOS, ETA card, bottom sheet, stops.
@@ -68,19 +68,38 @@ export function SosButton() {
   );
 }
 
-export function EtaCard({ big, unit = "min", title, subtitle, live = true }) {
-  const { colors, spacing, fontSize, radius, rf } = useTheme();
+// ETA card on the ride screens (approved design): big minutes, title and subtitle, LIVE, and the live card's progress
+// bar (bar = [{ length, color }] from liveBar) with a label under each end.
+export function EtaCard({ big, title, subtitle, live = true, bar = [], left, right }) {
+  const { colors, rs, rf } = useTheme();
+  const txt = (style) => [{ color: colors.text, fontFamily: fonts.regular }, style];
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md, backgroundColor: colors.background, borderRadius: radius.lg + 4, padding: spacing.md, elevation: 6, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 10 }}>
-      <Text style={{ color: colors.text, fontSize: rf(30), fontWeight: "800" }}>
-        {big}
-        <Text style={{ fontSize: fontSize.sm, color: colors.textMuted }}> {unit}</Text>
-      </Text>
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: colors.text, fontSize: fontSize.md, fontWeight: "700" }} numberOfLines={1}>{title}</Text>
-        <Text style={{ color: colors.textMuted, fontSize: fontSize.sm }} numberOfLines={1}>{subtitle}</Text>
+    <View style={{ backgroundColor: colors.background, borderRadius: rs(22), padding: rs(14), paddingBottom: rs(12), elevation: 6, shadowColor: "#0F141E", shadowOpacity: 0.16, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } }} accessibilityLiveRegion="polite">
+      <View style={{ flexDirection: "row", alignItems: "center", gap: rs(12) }}>
+        <View style={{ alignItems: "center", minWidth: rs(50) }}>
+          <Text style={txt({ fontFamily: fonts.extrabold, fontSize: rf(30), lineHeight: rf(34), letterSpacing: -0.8 })}>{big}</Text>
+          <Text style={txt({ color: colors.textMuted, fontFamily: fonts.bold, fontSize: rf(11) })}>min</Text>
+        </View>
+        <View style={{ width: 1, alignSelf: "stretch", backgroundColor: colors.line }} />
+        <View style={{ flex: 1 }}>
+          <Text numberOfLines={1} style={txt({ fontFamily: fonts.extrabold, fontSize: rf(16) })}>{title}</Text>
+          <Text numberOfLines={1} style={txt({ color: colors.textMuted, fontSize: rf(12.5) })}>{subtitle}</Text>
+        </View>
+        {live ? <Text style={txt({ color: colors.danger, fontFamily: fonts.extrabold, fontSize: rf(11), letterSpacing: 0.8 })}>● LIVE</Text> : null}
       </View>
-      {live ? <Text style={{ color: colors.danger, fontSize: rf(11), fontWeight: "800", letterSpacing: 1 }}>● LIVE</Text> : null}
+      {bar.length ? (
+        <>
+          <View style={{ flexDirection: "row", height: rs(6), borderRadius: rs(3), overflow: "hidden", marginTop: rs(12), backgroundColor: colors.line }}>
+            {bar.map((s, i) => (
+              <View key={i} style={{ width: `${s.length}%`, backgroundColor: s.color }} />
+            ))}
+          </View>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: rs(5) }}>
+            <Text style={txt({ color: colors.textMuted, fontSize: rf(11) })}>{left}</Text>
+            <Text style={txt({ color: colors.textMuted, fontSize: rf(11) })}>{right}</Text>
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
