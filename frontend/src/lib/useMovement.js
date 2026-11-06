@@ -36,7 +36,8 @@ export function useMovement(coords, durationMs, { onNear, nearAt = 0.8, onArrive
         }
       }
     };
-    const id = setInterval(tick, 120);
+    // 4 updates a second: smooth enough for the car, half the redraws of before (each one redraws the ride screen).
+    const id = setInterval(tick, 250);
     const stopTicks = onRideTick(tick); // keeps moving while the phone is locked during a ride
     return () => {
       clearInterval(id);

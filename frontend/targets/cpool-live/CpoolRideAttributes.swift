@@ -1,6 +1,8 @@
 import ActivityKit
 import Foundation
 
+// Must match the copy in frontend/modules/cpool-live/ios/CpoolLiveModule.swift exactly: ActivityKit pairs the app and
+// the widget by this type's name and fields, and a mismatch makes the card silently disappear. Change both together.
 struct CpoolRideAttributes: ActivityAttributes {
   struct Segment: Codable, Hashable {
     let length: Double

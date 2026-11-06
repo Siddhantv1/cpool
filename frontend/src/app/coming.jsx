@@ -7,7 +7,7 @@ import LiveMap from "../components/LiveMap";
 import { ActionRow, Avatar, call, EtaCard, MapSheet, Plate, RoundButton, shareTrip, SosButton } from "../components/RideUI";
 import { fonts, useTheme } from "../constants/theme";
 import { playAlert } from "../lib/alerts";
-import { arriveAt, useMeetRoute, useRoute, walkLabel } from "../lib/directions";
+import { arriveAt, useMeetRoute, useRoute, walkLabel, walkUrl } from "../lib/directions";
 import { km, liveBar, trafficSegments } from "../lib/route";
 import { endLiveRide, onIslandAction, showLiveRide, startRide, vehicleColour } from "../lib/live";
 import { alertIn, cancelScheduled } from "../lib/notify";
@@ -143,7 +143,7 @@ export default function Coming() {
             {needsWalk && !check.allowed ? <Text style={txt({ color: colors.textMuted, fontSize: rf(12) })}>Turn on location so {first} knows when you reach it.</Text> : null}
           </View>
           {walk && !check.arrived ? (
-            <Pressable onPress={() => meet && Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${meet[1]},${meet[0]}&travelmode=walking`)} accessibilityRole="button" accessibilityLabel="Walking directions in Google Maps" style={{ flexDirection: "row", alignItems: "center", gap: rs(5), backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: rs(14), height: rs(36) }}>
+            <Pressable onPress={() => meet && Linking.openURL(walkUrl(meet))} accessibilityRole="button" accessibilityLabel="Walking directions in Google Maps" style={{ flexDirection: "row", alignItems: "center", gap: rs(5), backgroundColor: colors.ink, borderRadius: radius.pill, paddingHorizontal: rs(14), height: rs(36) }}>
               <Ionicons name="walk" size={rs(15)} color={colors.onInk} />
               <Text style={txt({ color: colors.onInk, fontFamily: fonts.bold, fontSize: rf(13) })}>Walk</Text>
             </Pressable>

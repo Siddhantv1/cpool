@@ -112,9 +112,13 @@ export function arriveAt(minutes, now = new Date()) {
 // "8:42" + 25 min -> "9:07" (12-hour clock, no AM/PM; for times shown next to a stop).
 export function clockPlus(hhmm, minutes) {
   const [h, m] = hhmm.split(":").map(Number);
-  const total = h * 60 + m + Math.round(minutes);
+  // Wrapped to one day, so a ride just after midnight shows 11:50 instead of "-1:-10".
+  const total = (((h * 60 + m + Math.round(minutes)) % 1440) + 1440) % 1440;
   return `${Math.floor(total / 60) % 12 || 12}:${String(total % 60).padStart(2, "0")}`;
 }
+
+// Google Maps walking directions to a [lng, lat] point: every Walk button and the pickup reminder use this.
+export const walkUrl = ([lng, lat]) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
 
 // 350 m / 1.2 km
 export const walkLabel = (k) => (k < 1 ? `${Math.round((k * 1000) / 10) * 10} m` : `${k.toFixed(1)} km`);

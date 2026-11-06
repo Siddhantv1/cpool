@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import LiveMap from "../components/LiveMap";
 import { Avatar, RequestStatus, RideConfirmed, RoundButton, TripLegs } from "../components/RideUI";
 import { useTheme } from "../constants/theme";
-import { useMeetRoute, useRoute, walkLabel } from "../lib/directions";
+import { useMeetRoute, useRoute, walkLabel, walkUrl } from "../lib/directions";
 import { useMapControl } from "../lib/mapControl";
 import { OFFICES } from "../lib/mock";
 import { goBack } from "../lib/nav";
@@ -63,7 +63,7 @@ export default function PickupMap() {
     { id: "drop", kind: "tag", label: "DROP", icon: "office-building", tone: "#0F172A", coords: drop.coords },
   ];
   const fit = focus === "pickup" && meet ? around(meet) : focus === "drop" ? around(drop.coords) : undefined;
-  const walkDirections = () => meet && Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${meet[1]},${meet[0]}&travelmode=walking`);
+  const walkDirections = () => meet && Linking.openURL(walkUrl(meet));
   const plate = h.plate ? `•• •• •• ${h.plate.replace(/\s/g, "").slice(-4)}` : "";
   const strip = (key, label) => (
     <Pressable

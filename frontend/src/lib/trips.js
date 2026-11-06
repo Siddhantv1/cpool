@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { playAlert } from "./alerts";
 import { confirmSheet } from "./confirm";
+import { walkUrl } from "./directions";
 import { alertIn, alertNow, cancelScheduled, remind } from "./notify";
 import { ALERTS, HOME, HOSTS, MEET_POINT, OFFICES, REQUESTS } from "./mock";
 
@@ -110,7 +111,6 @@ function pickupAt(hhmm) {
   at.setHours(h, m, 0, 0);
   return at;
 }
-const walkUrl = ([lng, lat]) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
 
 function setBooking(status, kind, title, text, reason) {
   if (!state.booking) return;

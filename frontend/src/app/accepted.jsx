@@ -8,7 +8,7 @@ import MeetMap from "../components/MeetMap";
 import { Avatar, call, Plate, RoundButton, Stops } from "../components/RideUI";
 import { fonts, useTheme } from "../constants/theme";
 import { confirmSheet } from "../lib/confirm";
-import { clockPlus, useMeetRoute, useRoute, walkLabel } from "../lib/directions";
+import { clockPlus, useMeetRoute, useRoute, walkLabel, walkUrl } from "../lib/directions";
 import { ampm } from "../lib/requestSeat";
 import { km } from "../lib/route";
 import { ridePrice, useTrips, withdrawBooking } from "../lib/trips";
@@ -162,7 +162,7 @@ export default function Accepted() {
             </View>
             {walk ? (
               <Pressable
-                onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${meet[1]},${meet[0]}&travelmode=walking`).catch(() => {})}
+                onPress={() => Linking.openURL(walkUrl(meet)).catch(() => {})}
                 accessibilityRole="button"
                 accessibilityLabel="Walking directions in Google Maps"
                 style={({ pressed }) => ({ flexDirection: "row", alignItems: "center", gap: rs(5), backgroundColor: colors.ink, borderRadius: rs(20), paddingHorizontal: rs(16), height: rs(40), opacity: pressed ? 0.85 : 1 })}

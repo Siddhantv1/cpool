@@ -3,6 +3,8 @@ import CoreLocation
 import ExpoModulesCore
 import UIKit
 
+// Must match frontend/targets/cpool-live/CpoolRideAttributes.swift exactly: ActivityKit pairs the app and the widget by
+// this type's name and fields, and a mismatch makes the card silently disappear. Change both together.
 struct CpoolRideAttributes: ActivityAttributes {
   struct Segment: Codable, Hashable {
     let length: Double
@@ -65,8 +67,19 @@ private final class CpoolLocationDelegate: NSObject, CLLocationManagerDelegate {
   }
 
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-    guard manager.authorizationStatus == .authorizedAlways else { return }
+    guard Self.allowed(manager.authorizationStatus) else { return }
+    Self.start(manager)
+  }
+
+  // "While using the app" is enough: updates started on screen (Start ride) keep running while the host is in Google
+  // Maps, with iOS's blue location pill. "Always" isn't needed.
+  static func allowed(_ status: CLAuthorizationStatus) -> Bool {
+    status == .authorizedAlways || status == .authorizedWhenInUse
+  }
+
+  static func start(_ manager: CLLocationManager) {
     manager.allowsBackgroundLocationUpdates = true
+    manager.showsBackgroundLocationIndicator = true
     manager.startUpdatingLocation()
   }
 
@@ -95,9 +108,15 @@ public final class CpoolLiveModule: Module {
     Events("onIslandAction", "onRideTick", "onPushToken")
 
     OnCreate {
-      activity = Activity<CpoolRideAttributes>.activities.first
-      if let activity {
-        observePushToken(activity)
+      // A card left from before this launch (Cpool was closed mid-ride): its ride is gone, so end it instead of
+      // adopting it; otherwise the Lock Screen keeps showing old minutes for up to 8 hours.
+      let leftovers = Activity<CpoolRideAttributes>.activities
+      if !leftovers.isEmpty {
+        activityTask = Task {
+          for leftover in leftovers {
+            await leftover.end(nil, dismissalPolicy: .immediate)
+          }
+        }
       }
       actionObserver = NotificationCenter.default.addObserver(
         forName: Notification.Name("cpoolLiveAction"),
@@ -176,24 +195,32 @@ public final class CpoolLiveModule: Module {
 
   private func show(_ state: CpoolRideAttributes.ContentState) async {
     guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-    do {
-      let content = ActivityContent(state: state, staleDate: nil)
-      if let activity = activity ?? Activity<CpoolRideAttributes>.activities.first {
-        self.activity = activity
+    // No update for 15 minutes (Cpool stopped) and iOS marks the card stale instead of showing old minutes as live.
+    let content = ActivityContent(state: state, staleDate: Date().addingTimeInterval(15 * 60))
+    if let activity {
+      switch activity.activityState {
+      case .active, .stale:
         await activity.update(content)
-        observePushToken(activity)
-      } else {
-        let attributes = CpoolRideAttributes(startedAt: Date())
-        let created: Activity<CpoolRideAttributes>
-        do {
-          created = try Activity.request(attributes: attributes, content: content, pushType: .token)
-        } catch {
-          // shortcut: Personal Team builds have no APNs entitlement, retry locally until the paid team is enabled.
-          created = try Activity.request(attributes: attributes, content: content, pushType: nil)
-        }
-        activity = created
-        observePushToken(created)
+        return
+      case .dismissed:
+        return // removed from the Lock Screen by the person: don't bring it back for this ride
+      default:
+        break // ended, e.g. by iOS's 8-hour limit: start a new card below
       }
+    }
+    do {
+      let attributes = CpoolRideAttributes(startedAt: Date())
+      let created: Activity<CpoolRideAttributes>
+      do {
+        created = try Activity.request(attributes: attributes, content: content, pushType: .token)
+      } catch {
+        // shortcut: Personal Team builds have no APNs entitlement, retry locally until the paid team is enabled.
+        created = try Activity.request(attributes: attributes, content: content, pushType: nil)
+      }
+      activity = created
+      pushTask?.cancel() // the old card's token stream; watch the new card's instead
+      pushTask = nil
+      observePushToken(created)
     } catch {
       NSLog("CpoolLive: %@", error.localizedDescription)
     }
@@ -233,11 +260,10 @@ public final class CpoolLiveModule: Module {
     manager.pausesLocationUpdatesAutomatically = false
     locationDelegate = delegate
     locationManager = manager
-    if manager.authorizationStatus == .authorizedAlways {
-      manager.allowsBackgroundLocationUpdates = true
-      manager.startUpdatingLocation()
-    } else {
-      manager.requestAlwaysAuthorization()
+    if CpoolLocationDelegate.allowed(manager.authorizationStatus) {
+      CpoolLocationDelegate.start(manager)
+    } else if manager.authorizationStatus == .notDetermined {
+      manager.requestWhenInUseAuthorization()
     }
   }
 

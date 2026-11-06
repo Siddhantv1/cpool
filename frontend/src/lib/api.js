@@ -8,6 +8,7 @@ import { clearSession, getSession, updateSession } from "./session";
 const wait = () => new Promise((resolve) => setTimeout(resolve, 800));
 const normalize = (email) => email.trim().toLowerCase();
 const API = process.env.EXPO_PUBLIC_API_URL ?? "";
+const TIMEOUT_MS = 15000;
 
 export const isWorkEmail = (email) => /^[^\s@]+@perficient\.com$/i.test(email.trim());
 // Indian mobile number typed without +91: 10 digits starting with 6–9.
@@ -17,17 +18,25 @@ export const isMobile = (digits) => /^[6-9]\d{9}$/.test(digits);
 // so screens show message and branch on code. Signed-in calls send the session's token.
 async function call(path, { method = "POST", body, auth = false } = {}) {
   const token = auth ? getSession()?.token : null;
+  // React Native on Android has no time limit of its own: an unreachable server (asleep laptop, wrong Wi-Fi address)
+  // kept the spinner going for minutes. Give up after 15 s and show the network message instead.
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), TIMEOUT_MS);
   let res;
+  let data;
   try {
     res = await fetch(`${API}${path}`, {
       method,
       headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: body ? JSON.stringify(body) : undefined,
+      signal: abort.signal,
     });
+    data = await res.json().catch(() => null);
   } catch {
     throw Object.assign(new Error("Can’t reach Cpool. Check your internet and try again."), { code: "network" });
+  } finally {
+    clearTimeout(timer);
   }
-  const data = await res.json().catch(() => null);
   // 401 = the saved login no longer works (signed out on another phone, password changed, account deleted).
   if (auth && res.status === 401) {
     clearSession();

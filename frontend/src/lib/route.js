@@ -22,22 +22,37 @@ export function bearing(a, b) {
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
+// Km from the start to each point, measured once per route: the car is placed on the same route several times a second,
+// and re-measuring every point each time made the ride screens slow.
+const measured = new WeakMap();
+function kmSoFar(coords) {
+  let sums = measured.get(coords);
+  if (!sums) {
+    sums = [0];
+    for (let i = 1; i < coords.length; i++) sums.push(sums[i - 1] + km(coords[i - 1], coords[i]));
+    measured.set(coords, sums);
+  }
+  return sums;
+}
+
 // Point at fraction t of the route, plus heading and the part already driven.
 export function along(coords, t) {
-  const f = Math.min(1, Math.max(0, t));
-  const total = lengthKm(coords);
-  let target = total * f;
-  for (let i = 1; i < coords.length; i++) {
-    const seg = km(coords[i - 1], coords[i]);
-    if (target <= seg || i === coords.length - 1) {
-      const r = seg ? Math.min(1, target / seg) : 0;
-      const a = coords[i - 1], b = coords[i];
-      const point = [a[0] + (b[0] - a[0]) * r, a[1] + (b[1] - a[1]) * r];
-      return { point, heading: bearing(a, b), done: [...coords.slice(0, i), point] };
-    }
-    target -= seg;
+  if (coords.length < 2) return { point: coords[0], heading: 0, done: [coords[0]] };
+  const sums = kmSoFar(coords);
+  const target = sums[sums.length - 1] * Math.min(1, Math.max(0, t));
+  // The first point at or past the target (binary search; the last one if rounding overshoots).
+  let lo = 1;
+  let hi = coords.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sums[mid] < target) lo = mid + 1;
+    else hi = mid;
   }
-  return { point: coords[0], heading: 0, done: [coords[0]] };
+  const a = coords[lo - 1], b = coords[lo];
+  const seg = sums[lo] - sums[lo - 1];
+  const r = seg ? Math.min(1, (target - sums[lo - 1]) / seg) : 0;
+  const point = [a[0] + (b[0] - a[0]) * r, a[1] + (b[1] - a[1]) * r];
+  return { point, heading: bearing(a, b), done: [...coords.slice(0, lo), point] };
 }
 
 // [west, south, east, north] around all points.
@@ -60,7 +75,16 @@ export function nearestIndex(coords, p) {
 // congestion[i] is Mapbox's level for the line from coords[i] to coords[i + 1].
 const LEVEL = { low: 0, unknown: 0, moderate: 1, heavy: 2, severe: 3 };
 const TRAFFIC = ["#0F9D63", "#F59E0B", "#DC2626"]; // moving, slow, jammed
+// Worked out once per route: the ride screens ask for it on every redraw.
+const trafficMemo = new WeakMap();
 export function trafficSegments(coords, congestion) {
+  const hit = coords && trafficMemo.get(coords);
+  if (hit && hit.congestion === congestion) return hit.out;
+  const out = computeTraffic(coords, congestion);
+  if (coords) trafficMemo.set(coords, { congestion, out });
+  return out;
+}
+function computeTraffic(coords, congestion) {
   const n = Math.min((coords?.length ?? 0) - 1, congestion?.length ?? 0);
   if (n < 1) return null;
   const lines = Array.from({ length: n }, (_, i) => ({ d: km(coords[i], coords[i + 1]), level: LEVEL[congestion[i]] ?? 0 }));

@@ -13,7 +13,10 @@ struct CpoolLiveWidgetBundle: WidgetBundle {
 struct CpoolRideLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: CpoolRideAttributes.self) { context in
+      // The card is always light (approved design), so its text uses light-mode colours even when the phone is in
+      // dark mode; otherwise "Cpool" and the grey labels turn white on the light card.
       CpoolLockScreenCard(state: context.state)
+        .environment(\.colorScheme, .light)
         .activityBackgroundTint(Color(cpoolHex: "#F7F8FA"))
         .activitySystemActionForegroundColor(Color(cpoolHex: "#0F172A"))
         .widgetURL(URL(string: context.state.url))
@@ -73,9 +76,10 @@ private struct CpoolLockScreenCard: View {
           .background(Color(cpoolHex: "#0E6464"), in: RoundedRectangle(cornerRadius: 6))
         Text("Cpool")
           .font(.system(size: 12, weight: .bold, design: .rounded))
+          .foregroundStyle(Color(cpoolHex: "#0F172A"))
         Text("· \(state.sub) · \(state.headerTime)")
           .font(.system(size: 11, weight: .semibold, design: .rounded))
-          .foregroundStyle(.secondary)
+          .foregroundStyle(Color(cpoolHex: "#667085"))
         Spacer()
         Text("LIVE")
           .font(.system(size: 9, weight: .black, design: .rounded))
@@ -158,15 +162,27 @@ private struct CpoolProgress: View {
       .frame(height: 22)
 
       if labels, !state.labels.isEmpty {
-        HStack(spacing: 4) {
-          ForEach(Array(state.labels.enumerated()), id: \.offset) { index, label in
-            Text(label.text)
-              .font(.system(size: 9, weight: .semibold, design: .rounded))
-              .foregroundStyle(.secondary)
-              .lineLimit(1)
-              .frame(maxWidth: .infinity, alignment: index == 0 ? .leading : index == state.labels.count - 1 ? .trailing : .center)
+        // Each name sits under its stop's dot (label.at, 0–100, like Android): the first starts at its dot, the last
+        // ends at it, the ones between are centred on it, and none run past the bar's ends.
+        GeometryReader { proxy in
+          let width = proxy.size.width
+          let last = state.labels.count - 1
+          ZStack(alignment: .topLeading) {
+            ForEach(Array(state.labels.enumerated()), id: \.offset) { index, label in
+              Text(label.text)
+                .font(.system(size: 9, weight: .semibold, design: .rounded))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .fixedSize()
+                .alignmentGuide(.leading) { d in
+                  let x = width * label.at / 100
+                  let anchor = index == 0 ? 0 : index == last ? d.width : d.width / 2
+                  return -min(max(0, x - anchor), max(0, width - d.width))
+                }
+            }
           }
         }
+        .frame(height: 12)
       }
     }
   }
@@ -201,8 +217,17 @@ private struct CpoolActions: View {
 
         if let button = state.button {
           if #available(iOS 17.0, *) {
-            Button(intent: CpoolRideIntent(action: button.action, id: button.id)) {
-              Text(button.label).frame(maxWidth: .infinity)
+            // Host actions run in the background (the host stays in Google Maps); the guest's "I'm in the car" opens Cpool.
+            Group {
+              if button.action == "pickedup" || button.action == "complete" {
+                Button(intent: CpoolHostIntent(action: button.action, id: button.id)) {
+                  Text(button.label).frame(maxWidth: .infinity)
+                }
+              } else {
+                Button(intent: CpoolRideIntent(action: button.action, id: button.id)) {
+                  Text(button.label).frame(maxWidth: .infinity)
+                }
+              }
             }
             .buttonStyle(CpoolActionStyle(color: "#0E8A63", text: "#FFFFFF"))
           } else if let url = URL(string: state.url) {
