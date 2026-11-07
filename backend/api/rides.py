@@ -20,6 +20,7 @@ from rest_framework.response import Response
 
 from . import geo
 from .models import ACTIVE_BOOKING, ACTIVE_RIDE, OFFICES, Alert, Booking, Location, Ride, Sos
+from .push import push
 from .views import ApiError, VehicleSerializer, body, ok
 
 MAX_WALK_KM = 1.5  # rides whose route passes farther than this from you aren't shown
@@ -130,9 +131,8 @@ def when(dt):
 
 
 def notify(user, kind, title, text, who, booking):
-    """Add a line to someone's Alerts tab.
-    ponytail: push notifications get sent from here too, once the app sends its push token (part 3, step 2)."""
-    Alert.objects.create(user=user, kind=kind, title=title, text=text, who=who, ride_id=booking.ride_id, booking=booking)
+    """Add a line to someone's Alerts tab, and push it to their phones (if they registered any)."""
+    push(Alert.objects.create(user=user, kind=kind, title=title, text=text, who=who, ride_id=booking.ride_id, booking=booking))
 
 
 def host_info(ride, phone=False):

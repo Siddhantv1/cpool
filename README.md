@@ -161,6 +161,8 @@ If port 8000 is taken, use another one: `python manage.py runserver 8001`.
 | `DJANGO_SSL_REDIRECT` | with debug off: `1` (default) sends http to https and uses secure cookies; `0` for testing over plain http on a local network |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM` | send sign-in codes by SMTP (Brevo) instead of printing them. ⚠️ The Brevo SMTP key expires around Nov 2027 |
 | `SOS_EMAIL` | the security desk's address for SOS alerts |
+| `PUSH_ENABLED` | `0` turns push notifications off (default on; always off in tests) |
+| `EXPO_ACCESS_TOKEN` | only if "enhanced push security" is turned on in the Expo project |
 
 ### Folder structure
 ```
@@ -201,7 +203,7 @@ USB is used because office Wi-Fi blocks phone-to-laptop traffic.
 
 The contract between the app and the backend. **If a route or shape changes, update this section first.**
 
-- **Login token:** every route except sign-up/login needs `Authorization: Bearer <token>`.
+- **Login token:** every route except sign-up/login needs `Authorization: Bearer <token>`. A login ends after **60 days without using the app**: the next call gets `401` with code `session_expired`, and the app signs in again.
 - **Errors:** HTTP 4xx with `{code, message}`; invalid input also has `fields: {name: message}`.
 - **Sign-in routes are rate-limited:** 20 requests an hour per email, and 300 an hour per internet address (a whole office shares one). Over that: `429` with code `throttled`.
 - **Coordinates** are `[lng, lat]`. **Times** are ISO 8601 with a timezone.
@@ -228,7 +230,8 @@ The contract between the app and the backend. **If a route or shape changes, upd
 | GET | `/v1/me/trip` | what Home shows; poll it until push notifications exist. Returns `{ride, booking}`: **`ride`** is the ride you host, with its `bookings` (oldest first; each has `price`, and `alongKm`, how far along your route that guest is, so sort by it to drive pickups in order); **`booking`** is your latest seat request, with the host and `price` under `booking.ride` (kept for 24 h after it ends, so the app can show "declined") |
 | GET | `/v1/me/history` | My rides → Past and the Account numbers: `{stats: {ridesTaken, ridesGiven, kmShared}, rides: [{role, rideId, when, from, to, with, km}]}` |
 | POST | `/v1/me/delete` | `{password}` → `{ok}`: deletes your account and wipes your name, email, phone and number plates. Past rides stay for others, showing "Deleted user". Errors: `wrong_password`, `already_on_trip` |
-| PUT | `/v1/me/devices` | push notification token: **not built yet** |
+| PUT | `/v1/me/devices` | `{token, platform: "android" \| "ios"}` → `{ok}`: this phone wants push notifications (its Expo push token, `ExponentPushToken[…]`). Send it on every app start and sign-in. Error: `invalid_push_token` |
+| DELETE | `/v1/me/devices` | `{token}` → `{ok}`: stop push for this phone. Signing out, changing or resetting the password, a 60-day expiry and deleting the account stop it for all of the account's phones |
 
 ### Vehicles
 | Method | Path | Request → response |
@@ -265,6 +268,19 @@ The contract between the app and the backend. **If a route or shape changes, upd
 | POST | `/v1/bookings/{id}/picked-up` | host, after `start`: "Picked up". The host's app moves on straight away; the booking becomes `picked_up` once the guest has also confirmed |
 | POST | `/v1/bookings/{id}/in-car` | guest, after the host has started: "I'm in the car". The guest's app moves on straight away; the booking becomes `picked_up` once the host has also confirmed. The host gets an `in_car` alert |
 | POST | `/v1/bookings/{id}/no-show` | host, after `start`. Error: `guest_in_car` if the guest has said they're in the car (the booking is then flagged for the admin) |
+
+### Push notifications
+
+Every alert (see Alerts above) is also pushed to the user's registered phones through **Expo's push service**, which reaches Android (through Firebase) and iPhone (through Apple). `data` always has `kind`, `alertId`, `bookingId` and `rideId`, plus:
+
+| Alert `kind` | Android channel | Category (buttons) | Extra `data` |
+|---|---|---|---|
+| `request` (to the host) | `requests` | `seat-request` | `url: {pathname: "/request", params: {id}}`, `reqId` |
+| `accepted` | `ride` | `ride-accepted` | `url: "/accepted"`, `phone` (the host's) |
+| `declined` | `ride` | `find` | `url: "/results"` |
+| `cancelled` (to a guest) | `ride` | `ride-cancelled` | `url: "/cancelled"`, `reason` |
+| `cancelled` (to the host: a guest withdrew) | `requests` | — | `url: "/home"` |
+| `in_car` (to the host) | `guests` | `guest-in-car` | `url: "/drive"`, `guestId` |
 
 **Booking status:** `requested` → `accepted`, `declined`, `withdrawn` (by the guest) or `cancelled` (by the host) → `picked_up` or `no_show`.
 Bookings show `hostConfirmed` and `guestConfirmed` (true/false), so each app can show "waiting for the other person to confirm". When the host completes the ride, a booking that only one of them confirmed still counts as `picked_up`; one that nobody confirmed becomes `no_show`.
