@@ -4,5 +4,6 @@ build.log
 backend/.venv/
 backend/db.sqlite3
 backend/.secret_key
+backend/.cache/
 __pycache__/
 backend/.env

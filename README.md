@@ -143,10 +143,14 @@ python manage.py test api           # run the tests
 ```
 If port 8000 is taken, use another one: `python manage.py runserver 8001`.
 
+**Settings and secrets go in `backend/.env`** (git-ignored, read automatically at start-up; real environment variables win), one per line, e.g. `EMAIL_HOST=smtp-relay.brevo.com`. Never commit it.
+
+**When other people can reach your server** (e.g. `runserver 0.0.0.0:8000` for a phone on Wi-Fi), turn debug off so crash pages can't show code: set `DJANGO_DEBUG=0`, a `DJANGO_SECRET_KEY`, and `DJANGO_SSL_REDIRECT=0` (plain http on a local network).
+
 ### Useful pages
 - **Swagger UI**, to try every route in the browser: http://localhost:8000/api/docs/. Log in with `/v1/auth/login`, then click **Authorize** and paste the token.
 - **Admin panel:** http://localhost:8000/admin/ shows users, vehicles, rides, bookings, alerts and SOS alerts. Untick *Active* on a user to switch off someone who has left.
-- **Sign-in codes** print in the `runserver` terminal until email is set up.
+- **Sign-in codes** are emailed when the `EMAIL_…` settings are in `backend/.env`; without them they print in the `runserver` terminal.
 
 ### Settings (environment variables)
 | Variable | Use |
@@ -154,7 +158,8 @@ If port 8000 is taken, use another one: `python manage.py runserver 8001`.
 | `DJANGO_DEBUG` | debug is on for local `manage.py` commands and off for a hosted server (gunicorn, waitress…), unless you set this to `1` or `0` |
 | `DJANGO_SECRET_KEY` | **required in production**. Locally, a random key is made once in `backend/.secret_key` (git-ignored) |
 | `DJANGO_ALLOWED_HOSTS` | comma-separated host names (default: localhost) |
-| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM` | send sign-in codes by SMTP instead of printing them |
+| `DJANGO_SSL_REDIRECT` | with debug off: `1` (default) sends http to https and uses secure cookies; `0` for testing over plain http on a local network |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER`, `EMAIL_PASSWORD`, `EMAIL_FROM` | send sign-in codes by SMTP (Brevo) instead of printing them. ⚠️ The Brevo SMTP key expires around Nov 2027 |
 | `SOS_EMAIL` | the security desk's address for SOS alerts |
 
 ### Folder structure
