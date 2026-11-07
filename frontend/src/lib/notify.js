@@ -64,9 +64,12 @@ async function schedule(key, content, trigger) {
 }
 // Removes it whether it's still waiting or already in the shade, so no stale buttons are left behind.
 export const cancelScheduled = (key) => Promise.all([Notifications.cancelScheduledNotificationAsync(key), Notifications.dismissNotificationAsync(key)]).catch(() => {});
-// "Pickup in 15 min" / "Leave in 15 min".
+// The host's "Leave in 15 min".
 export function remind(key, at, content) {
-  const date = new Date(new Date(at).getTime() - REMIND_MIN * 60000);
+  return remindOn(key, new Date(new Date(at).getTime() - REMIND_MIN * 60000), content);
+}
+// At an exact time: the guest's pickup reminder, worked out from their walk (pickupPlan in lib/trips.js).
+export function remindOn(key, date, content) {
   if (date <= new Date()) return cancelScheduled(key);
   return schedule(key, { ...content, data: { ...content.data, kind: "reminder" } }, { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId: "reminders" });
 }
@@ -77,7 +80,7 @@ export function alertIn(key, channel, seconds, content) {
 
 // Asks once per app start, at the moment it makes sense (first request or publish). copy: { title, text, preview, button?, onAllow?, pill? }
 // Already allowed: asks for exact alarms instead, or Android may deliver a reminder up to an hour late.
-const EXACT = { title: "Get reminders on time", text: "Allow “Alarms & reminders” so the 15-minute reminder arrives exactly on time.", preview: ["Pickup in 15 min", "Walk to the meet point"], button: "Allow alarms & reminders" };
+const EXACT = { title: "Get reminders on time", text: "Allow “Alarms & reminders” so your ride reminder arrives exactly on time.", preview: ["Pickup in 15 min", "Walk to the meet point"], button: "Allow alarms & reminders" };
 let asked = false;
 const askers = new Set();
 const exactAllowed = async () => Platform.OS !== "android" || ((await Notifications.getExactAlarmPermissionsAsync().catch(() => null))?.granted ?? true);

@@ -117,6 +117,16 @@ export function clockPlus(hhmm, minutes) {
   return `${Math.floor(total / 60) % 12 || 12}:${String(total % 60).padStart(2, "0")}`;
 }
 
+// When to go and when to remind (approved round 8), in minutes before pickup. With a walk: leave = the walk + 2 min to
+// spare, reminder 5 min before leaving. No walk (walkMin null): be ready 5 min before, reminder 15 min before pickup.
+// remindMin (the choice in "Remind me"; 0 = off) replaces the 5 or 15.
+export function pickupTimes(walkMin, remindMin) {
+  const walk = walkMin != null;
+  const goBefore = walk ? Math.ceil(walkMin) + 2 : 5;
+  const before = remindMin ?? (walk ? 5 : 15);
+  return { walk, goBefore, before, off: before === 0, remindBefore: walk ? goBefore + before : before };
+}
+
 // Google Maps walking directions to a [lng, lat] point: every Walk button and the pickup reminder use this.
 export const walkUrl = ([lng, lat]) => `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
 

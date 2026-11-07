@@ -29,8 +29,6 @@ if (hasMapboxToken && !mapTelemetryOn()) Mapbox.setTelemetryEnabled(false);
 export const MAP_STYLES = { light: "mapbox://styles/mapbox/navigation-day-v1", dark: "mapbox://styles/mapbox/navigation-night-v1" };
 // Grey maps for a trip that isn't happening any more (Cancelled screen).
 export const MUTED_STYLES = { light: "mapbox://styles/mapbox/light-v11", dark: "mapbox://styles/mapbox/dark-v11" };
-// Street detail (buildings, small lanes, place names) for the walk to a pickup point.
-export const STREET_STYLE = "mapbox://styles/mapbox/streets-v12";
 
 // [west, south, east, north] -> Mapbox camera bounds
 export const toBounds = ([w, s, e, n]) => ({ ne: [e, n], sw: [w, s] });

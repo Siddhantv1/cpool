@@ -36,20 +36,19 @@ function TopBar({ place, unread, gender, photo }) {
       <Pressable onPress={() => router.push("/account")} accessibilityRole="button" accessibilityLabel="Account" style={[round, { overflow: "hidden" }]}>
         {photo ? <Image source={{ uri: photo }} style={{ width: rs(50), height: rs(50) }} accessibilityIgnoresInvertColors /> : <PersonAvatar gender={gender} size={rs(50)} />}
       </Pressable>
-      <View pointerEvents="box-none" style={{ flex: 1, alignItems: "center" }}>
-        <Pressable
-          onPress={() => router.push({ pathname: "/places", params: { field: "from" } })}
-          accessibilityRole="button"
-          accessibilityLabel={`Pickup: ${place}. Change`}
-          style={{ maxWidth: "100%", height: rs(50), borderRadius: rs(25), backgroundColor: colors.background, paddingLeft: rs(14), paddingRight: rs(16), flexDirection: "row", alignItems: "center", gap: rs(7), ...shadow }}
-        >
-          <Ionicons name="location-outline" size={rs(19)} color={colors.primary} />
-          <Text numberOfLines={1} style={{ flexShrink: 1, fontFamily: fonts.bold, fontSize: rf(15.5), color: colors.text }}>
-            {place}
-          </Text>
-          <Ionicons name="chevron-down" size={rs(17)} color={colors.text} />
-        </Pressable>
-      </View>
+      {/* Always the full width between your picture and the bell, so a short place name ("Sector 1") looks the same as a long one. */}
+      <Pressable
+        onPress={() => router.push({ pathname: "/places", params: { field: "from" } })}
+        accessibilityRole="button"
+        accessibilityLabel={`Pickup: ${place}. Change`}
+        style={{ flex: 1, height: rs(50), borderRadius: rs(25), backgroundColor: colors.background, paddingLeft: rs(14), paddingRight: rs(16), flexDirection: "row", alignItems: "center", gap: rs(7), ...shadow }}
+      >
+        <Ionicons name="location-outline" size={rs(19)} color={colors.primary} />
+        <Text numberOfLines={1} style={{ flex: 1, fontFamily: fonts.bold, fontSize: rf(15.5), color: colors.text }}>
+          {place}
+        </Text>
+        <Ionicons name="chevron-down" size={rs(17)} color={colors.text} />
+      </Pressable>
       <Pressable onPress={() => router.push("/alerts")} accessibilityRole="button" accessibilityLabel={unread ? `Alerts, ${unread} new` : "Alerts"} style={round}>
         <Ionicons name="notifications-outline" size={rs(23)} color={colors.text} />
         {unread ? <View style={{ position: "absolute", top: rs(12), right: rs(13), width: rs(11), height: rs(11), borderRadius: rs(6), backgroundColor: colors.danger, borderWidth: 2, borderColor: colors.background }} /> : null}
@@ -97,6 +96,23 @@ function RideTag({ host, onPress }) {
       </View>
       <View style={{ width: 0, height: 0, borderLeftWidth: rs(6), borderRightWidth: rs(6), borderTopWidth: rs(7), borderLeftColor: "transparent", borderRightColor: "transparent", borderTopColor: colors.ink }} />
     </Pressable>
+  );
+}
+
+// The pickup you chose (approved round 7): a ring on the spot with "Your pickup · name" under it. The empty space above
+// keeps the ring centred on the coordinate (no anchor props: they hid markers on Android).
+function PickupMark({ name }) {
+  const { colors, rs, rf } = useTheme();
+  const label = rs(24);
+  return (
+    <View pointerEvents="none" style={{ alignItems: "center", paddingTop: label + rs(4) }}>
+      <View style={{ width: rs(18), height: rs(18), borderRadius: rs(9), backgroundColor: colors.background, borderWidth: rs(4.5), borderColor: colors.text, elevation: 4 }} />
+      <View style={{ height: label, marginTop: rs(4), justifyContent: "center", backgroundColor: colors.background, borderRadius: rs(8), paddingHorizontal: rs(8), elevation: 3, maxWidth: rs(190) }}>
+        <Text numberOfLines={1} style={{ fontFamily: fonts.bold, fontSize: rf(12), color: colors.text }}>
+          Your pickup · {name}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -497,9 +513,14 @@ export default function Home() {
       <Text style={{ fontFamily: fonts.bold, fontSize: rf(12.5), color: colors.text }}>{first(p.name)}</Text>
     </View>
   );
+  // A chosen pickup gets its own mark; with none chosen, your GPS blue dot (UserLocation) shows where you are.
+  const pickup = places.pickup?.coords ? places.pickup : null;
   const markers =
     mode === "guest"
-      ? (hosts ?? []).map((h) => ({ id: h.id, coords: h.start, node: <RideTag host={h} onPress={() => openRide(h)} /> }))
+      ? [
+          ...(pickup ? [{ id: "pickup", coords: pickup.coords, node: <PickupMark name={pickup.name} /> }] : []),
+          ...(hosts ?? []).map((h) => ({ id: h.id, coords: h.start, node: <RideTag host={h} onPress={() => openRide(h)} /> })),
+        ]
       : [
           { id: "from", coords: trip.from.coords, node: <View style={{ width: rs(16), height: rs(16), borderRadius: rs(8), backgroundColor: colors.background, borderWidth: rs(4), borderColor: colors.text }} /> },
           {
@@ -515,7 +536,8 @@ export default function Home() {
           ...(published ? requests : []).map((r) => ({ id: r.id, coords: r.coords, node: pin(r, "#F5A524") })),
           ...(published ? passengers : []).map((p) => ({ id: `p-${p.id}`, coords: p.coords, node: pin(p, colors.purple) })),
         ];
-  const fit = mode === "guest" ? [...(area.coords ? [area.coords] : []), ...(hosts ?? []).map((h) => h.start)] : [trip.from.coords, trip.to.coords, ...(published ? [...requests, ...passengers].map((r) => r.coords) : [])];
+  const me = pickup?.coords ?? area.coords;
+  const fit = mode === "guest" ? [...(me ? [me] : []), ...(hosts ?? []).map((h) => h.start)] : [trip.from.coords, trip.to.coords, ...(published ? [...requests, ...passengers].map((r) => r.coords) : [])];
   const unread = alerts.filter((a) => !a.read).length;
 
   return (
@@ -537,7 +559,8 @@ export default function Home() {
 
       <View
         onLayout={(e) => setSheetH(e.nativeEvent.layout.height)}
-        style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: height * 0.68, backgroundColor: colors.background, borderTopLeftRadius: rs(28), borderTopRightRadius: rs(28), paddingTop: rs(10), paddingHorizontal: rs(16), paddingBottom: insets.bottom + rs(14), elevation: 14, shadowColor: "#0F141E", shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: -6 } }}
+        // Bottom gap: some phones report no bottom inset (the ride cards then touched the edge), so keep a minimum.
+        style={{ position: "absolute", left: 0, right: 0, bottom: 0, maxHeight: height * 0.68, backgroundColor: colors.background, borderTopLeftRadius: rs(28), borderTopRightRadius: rs(28), paddingTop: rs(10), paddingHorizontal: rs(16), paddingBottom: Math.max(insets.bottom, rs(10)) + rs(16), elevation: 14, shadowColor: "#0F141E", shadowOpacity: 0.12, shadowRadius: 20, shadowOffset: { width: 0, height: -6 } }}
       >
         <View style={{ alignSelf: "center", width: rs(38), height: rs(4), borderRadius: rs(2), backgroundColor: colors.line, marginBottom: rs(12) }} />
         <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ gap: rs(12) }} keyboardShouldPersistTaps="handled">

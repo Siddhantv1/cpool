@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 import { Alert } from "react-native";
 import { playAlert } from "./alerts";
 import { confirmSheet } from "./confirm";
-import { walkUrl } from "./directions";
-import { alertIn, alertNow, cancelScheduled, remind } from "./notify";
+import { pickupTimes, walkUrl } from "./directions";
+import { alertIn, alertNow, cancelScheduled, remind, remindOn } from "./notify";
 import { ALERTS, HOME, HOSTS, MEET_POINT, OFFICES, REQUESTS } from "./mock";
+import { getSession } from "./session";
 
 let state = {
   booking: null, // guest: { host, pickup, drop, status: "requested" | "accepted" | "declined" | "cancelled" (by host) | "withdrawn" (by you), reason }
@@ -112,23 +113,45 @@ function pickupAt(hhmm) {
   return at;
 }
 
+// When to go and when to remind you (pickupTimes), with your choice from "Remind me" (session.remindMin).
+export const pickupPlan = (walkMin) => pickupTimes(walkMin, getSession()?.remindMin);
+
+// "300 m" / "1.2 km" -> walking minutes at about 80 m a minute; null when there's no real walk (under 30 m).
+const walkMinutes = (text = "") => {
+  const n = parseFloat(text) || 0;
+  const metres = /km/.test(text) ? n * 1000 : n;
+  return metres >= 30 ? metres / 80 : null;
+};
+const ampmOf = (hhmm) => (Number(hhmm.split(":")[0]) < 12 ? "AM" : "PM");
+
+// Schedules (or cancels) the guest's pickup reminder from pickupPlan. Runs when the seat is accepted, with the walk
+// estimated from the ride's walk distance, and again from the Accepted screen with the real walking route and meet point.
+export function schedulePickupReminder(walkMin, meet) {
+  const b = state.booking;
+  if (!b || b.status !== "accepted") return;
+  const p = pickupPlan(walkMin);
+  if (p.off) return cancelScheduled("pickup");
+  const name = first(b.host.name);
+  const at = `${b.host.time} ${ampmOf(b.host.time)}`;
+  remindOn("pickup", new Date(pickupAt(b.host.time).getTime() - p.remindBefore * 60000), {
+    title: p.walk ? `Leave in ${p.before} min` : `Pickup in ${p.before} min`,
+    body: p.walk ? `Walk to the pickup near ${b.pickup.name} · ${name} arrives ${at}` : `Be ready at ${b.pickup.name} · ${name} arrives ${at}`,
+    categoryIdentifier: "pickup-reminder",
+    data: { url: "/coming", walkUrl: walkUrl(meet ?? b.pickup.coords) },
+  });
+}
+
 function setBooking(status, kind, title, text, reason) {
   if (!state.booking) return;
   clearTimeout(answerTimer);
   const b = state.booking;
-  if (status === "accepted") {
-    remind("pickup", pickupAt(b.host.time), {
-      title: "Pickup in 15 min",
-      body: `Walk ${b.host.walkTo} to the meet point near ${b.pickup.name} · ${first(b.host.name)} ${b.host.time} AM`,
-      categoryIdentifier: "pickup-reminder",
-      data: { url: "/coming", walkUrl: walkUrl(b.pickup.coords) },
-    });
-  } else {
+  if (status !== "accepted") {
     cancelScheduled("pickup");
     cancelScheduled("answer");
     if (status !== "withdrawn") alertNow("ride", { title, body: text, categoryIdentifier: status === "cancelled" ? "ride-cancelled" : "find", data: { url: "/results" } });
   }
   set({ booking: { ...state.booking, status, reason }, alerts: [alert(kind, title, text, { who: hostWho(state.booking.host), cta: ["declined", "cancelled"].includes(status) ? "find" : undefined }), ...state.alerts] });
+  if (status === "accepted") schedulePickupReminder(walkMinutes(b.host.walkTo));
 }
 const acceptBooking = () =>
   state.booking && setBooking("accepted", "accepted", `${first(state.booking.host.name)} accepted your request`, acceptedText(state.booking.host, state.booking.pickup));

@@ -2,7 +2,7 @@
 // Run with `npm test` in frontend/.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clockPlus, walkUrl } from "../src/lib/directions.js";
+import { clockPlus, pickupTimes, walkUrl } from "../src/lib/directions.js";
 import { along, bearing, km, liveBar, nearestIndex, trafficSegments } from "../src/lib/route.js";
 
 const line = [[77.6, 12.9], [77.61, 12.9], [77.62, 12.9]]; // two equal stretches going east
@@ -74,6 +74,21 @@ test("liveBar splits the trip into driven, ahead and later parts that add up to 
   assert.ok(near(parts.reduce((sum, p) => sum + p.length, 0), 100));
   const legs = liveBar(30, 20, 60, [{ length: 100, color: "#0F9D63" }]);
   assert.ok(near(legs.reduce((sum, p) => sum + p.length, 0), 100));
+});
+
+test("pickupTimes: leave and reminder times follow the walk", () => {
+  // 13 min walk to an 8:50 pickup: leave 8:35 (2 min to spare), reminder 8:30 (5 min before leaving).
+  const walk = pickupTimes(13, undefined);
+  assert.equal(clockPlus("8:50", -walk.goBefore), "8:35");
+  assert.equal(clockPlus("8:50", -walk.remindBefore), "8:30");
+  assert.equal(pickupTimes(12.2, undefined).goBefore, 15); // part of a minute counts as a whole one
+  // No walk: be ready 8:45, reminder 15 min before pickup.
+  const spot = pickupTimes(null, undefined);
+  assert.equal(clockPlus("8:50", -spot.goBefore), "8:45");
+  assert.equal(clockPlus("8:50", -spot.remindBefore), "8:35");
+  // The choice from Remind me: 30 min before leaving; 0 turns it off.
+  assert.equal(clockPlus("8:50", -pickupTimes(13, 30).remindBefore), "8:05");
+  assert.equal(pickupTimes(13, 0).off, true);
 });
 
 test("walkUrl opens Google Maps walking directions to [lng, lat]", () => {

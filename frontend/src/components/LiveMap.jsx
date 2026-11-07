@@ -104,7 +104,8 @@ export function NoMapToken() {
 // pins: [{ id, kind, coords, label?, focused?, onPress? }]; vehicle: { point, heading, type, self }; walks: dotted walking lines
 // padding: space taken by cards on top / bottom; fit: points to frame (default: route + pins + walks) — pass a fixed list
 // so the camera stays still while the route or pins change. muted: grey map and route (a cancelled trip).
-export default function LiveMap({ route, done, pins = [], vehicle, walks = [], padding: givenPadding, fit, muted }) {
+// walkColor: the dotted walk (grey by default; purple on Seat accepted, matching its walk symbol).
+export default function LiveMap({ route, done, pins = [], vehicle, walks = [], padding: givenPadding, fit, muted, walkColor }) {
   const { colors, rs } = useTheme();
   const padding = givenPadding ?? { top: rs(160), bottom: rs(300), left: rs(40), right: rs(40) };
   const scheme = useColorScheme();
@@ -186,7 +187,7 @@ export default function LiveMap({ route, done, pins = [], vehicle, walks = [], p
         ) : null}
         {walks.map((w, i) => (
           <ShapeSource key={i} id={`walk-${i}`} shape={lineFeature(w)}>
-            <LineLayer id={`walk-line-${i}`} style={{ lineCap: "round", lineWidth: 5, lineColor: colors.textMuted, lineDasharray: [0, 2] }} />
+            <LineLayer id={`walk-line-${i}`} style={{ lineCap: "round", lineWidth: 5, lineColor: walkColor ?? colors.textMuted, lineDasharray: [0, 2] }} />
           </ShapeSource>
         ))}
         {/* Focused pin last so it's drawn on top; its pointer tip sits on the exact spot. */}

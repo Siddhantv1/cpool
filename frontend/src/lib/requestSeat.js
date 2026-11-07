@@ -26,7 +26,7 @@ export function requestSeat(hostId, drop, pickup) {
   bookRide(hostId, drop, pickup);
   const host = hostById(hostId);
   const name = host.name.split(" ")[0];
-  maybeAskForNotifications({ title: `Know the moment ${name} accepts`, text: "And get a reminder 15 minutes before pickup.", preview: [`${name} accepted your request`, `Tomorrow ${host.time} AM · ${host.vehicle}`] });
+  maybeAskForNotifications({ title: `Know the moment ${name} accepts`, text: "And a reminder when it’s time to leave.", preview: [`${name} accepted your request`, `Tomorrow ${host.time} AM · ${host.vehicle}`] });
 }
 
 // Opens the accepted ride as soon as the host accepts your request while you are on this screen.
