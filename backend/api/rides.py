@@ -240,7 +240,11 @@ def tidy():
                 except ApiError:  # the host completed it a moment ago
                     pass
             elif Ride.objects.filter(pk=ride.pk, status="open").update(status="cancelled"):
-                ride.bookings.filter(status="accepted").update(status="cancelled", reason="The ride was never started in the app", status_changed=now)
+                told = list(ride.bookings.filter(status="accepted").select_related("guest"))
+                ride.bookings.filter(pk__in=[b.pk for b in told]).update(status="cancelled", reason="The ride was never started in the app", status_changed=now)
+                for b in told:
+                    notify(b.guest, "cancelled", f"{first_name(ride.host)}’s ride didn’t go ahead", f"{when(ride.depart_at)} · it was never started in Cpool", ride.host, b)
+                ride.locations.all().delete()
 
 
 def check_free(user):
@@ -361,6 +365,7 @@ def finish(ride):
     # Only one of them confirmed: still counts as picked up (the booking keeps showing who confirmed, for the admin).
     ride.bookings.filter(status="accepted").exclude(host_confirmed_at=None, guest_confirmed_at=None).update(status="picked_up", status_changed=now)
     ride.bookings.filter(status="accepted").update(status="no_show", status_changed=now)  # neither confirmed
+    ride.locations.all().delete()  # live GPS points are only kept while a ride is going
 
 
 @extend_schema(request=body("RideCancelIn", {"reason": serializers.CharField(required=False)}), responses=OpenApiTypes.OBJECT)
@@ -374,6 +379,7 @@ def cancel_ride(request, ride_id):
         ride.bookings.filter(pk__in=[b.pk for b in told]).update(status="cancelled", reason=reason, status_changed=timezone.now())
         for b in told:
             notify(b.guest, "cancelled", f"{first_name(request.user)} cancelled the ride", f"{when(ride.depart_at)} · {reason}", request.user, b)
+        ride.locations.all().delete()
     ride.refresh_from_db()
     return Response(host_view(ride))
 
@@ -442,13 +448,15 @@ def cancel_booking(request, booking_id):
     booking = get_object_or_404(Booking.objects.select_related("ride__host", "ride__vehicle"), pk=booking_id, guest=request.user)
     reason = str(request.data.get("reason") or "")[:140]
     with transaction.atomic():
-        was = booking.status
-        qs = Booking.objects.filter(pk=booking.pk)
-        move(qs, "withdrawn", ["requested", "accepted"], "This seat can’t be cancelled now.")
-        qs.update(reason=reason)
-        if was == "accepted":
+        qs, now = Booking.objects.filter(pk=booking.pk), timezone.now()
+        # Decided inside each update, so a host accepting at the same moment can't make the seat vanish.
+        if qs.filter(status="accepted").update(status="withdrawn", reason=reason, status_changed=now):
             Ride.objects.filter(pk=booking.ride_id).update(seats_left=F("seats_left") + 1)
-        title = f"{first_name(request.user)} cancelled their seat" if was == "accepted" else f"{first_name(request.user)} withdrew their request"
+            title = f"{first_name(request.user)} cancelled their seat"
+        elif qs.filter(status="requested").update(status="withdrawn", reason=reason, status_changed=now):
+            title = f"{first_name(request.user)} withdrew their request"
+        else:
+            raise ApiError("not_allowed_now", "This seat can’t be cancelled now.", 409)
         notify(booking.ride.host, "cancelled", title, f"{when(booking.ride.depart_at)} · {reason or 'No reason given'}", request.user, booking)
     booking.refresh_from_db()
     return Response(guest_view(booking))
@@ -550,8 +558,10 @@ def send_location(request, ride_id):
 @extend_schema(responses=OpenApiTypes.OBJECT)
 @api_view(["GET"])
 def live(request, ride_id):
-    """Guests see the host; the host sees their confirmed guests. Guests never see each other."""
+    """Guests see the host; the host sees their confirmed guests. Guests never see each other. Nothing once the ride is over."""
     ride = on_ride(request, ride_id)
+    if ride.status not in ACTIVE_RIDE:
+        return Response({"host": None, "guests": []})
     locations = {loc.user_id: loc for loc in ride.locations.all()}
     guests = []
     if ride.host_id == request.user.id:

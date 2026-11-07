@@ -467,3 +467,29 @@ class RideTests(APITestCase):
         ride = self.offer()
         err = self.call(self.guest, "post", f"/v1/rides/{ride['id']}/bookings", {"meetPoint": [77.5, 13.1], "meetName": "Far away"}, 400)
         self.assertEqual(err["code"], "meet_point_too_far")
+
+    # ---------- Claude-A's audit (A47) ----------
+
+    def test_withdraw_a_pending_request_keeps_seats(self):  # A47.1
+        ride = self.offer()
+        booking = self.request_seat(self.guest, ride["id"])
+        self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/cancel")
+        self.assertEqual(Ride.objects.get(pk=ride["id"]).seats_left, 2)  # nothing was taken, nothing given back
+        self.assertEqual(self.alerts(self.host)[0]["title"], "Guest withdrew their request")
+        self.assertEqual(self.call(self.guest, "post", f"/v1/bookings/{booking['id']}/cancel", status=409)["code"], "not_allowed_now")
+
+    def test_no_live_positions_after_the_ride(self):  # A47.2
+        ride, booking = self.accepted_booking()
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/start")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/locations", {"coords": [77.63, 12.93]})
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/picked-up")
+        self.call(self.host, "post", f"/v1/rides/{ride['id']}/complete")
+        self.assertEqual(self.call(self.guest, "get", f"/v1/rides/{ride['id']}/live"), {"host": None, "guests": []})
+        self.assertFalse(Ride.objects.get(pk=ride["id"]).locations.exists())  # GPS points deleted
+
+    def test_guests_told_when_a_ride_never_started(self):  # A47.4
+        ride, booking = self.accepted_booking()
+        Ride.objects.filter(pk=ride["id"]).update(depart_at=timezone.now() - timedelta(hours=7))
+        self.call(self.guest, "get", "/v1/me/trip")
+        alert = self.alerts(self.guest)[0]
+        self.assertEqual((alert["kind"], alert["title"]), ("cancelled", "Host’s ride didn’t go ahead"))

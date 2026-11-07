@@ -18,6 +18,15 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Local settings and secrets (e.g. the Brevo email login) from backend/.env, which is git-ignored.
+# Real environment variables win, so a hosting platform's settings always take precedence.
+_env_file = BASE_DIR / ".env"
+if _env_file.exists():
+    for _line in _env_file.read_text(encoding="utf-8").splitlines():
+        _key, _sep, _value = _line.partition("=")
+        if _sep and _key.strip() and not _key.strip().startswith("#"):
+            os.environ.setdefault(_key.strip(), _value.strip().strip('"').strip("'"))
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
@@ -169,3 +178,12 @@ else:
 # Tests create many users; the real (deliberately slow) password hasher made them take minutes on a laptop.
 if "test" in sys.argv:
     PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+
+# 3. When debug is off (hosted, or reachable by other people): HTTPS-only cookies and redirects, and rate limits kept in a
+# shared file cache (the default memory cache resets on restart and is separate for each server process).
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # hosts like Render terminate HTTPS in front of Django
+    SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"  # 0 for testing over plain http on a local network
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+    SECURE_HSTS_SECONDS = 30 * 24 * 3600 if SECURE_SSL_REDIRECT else 0
+    CACHES = {"default": {"BACKEND": "django.core.cache.backends.filebased.FileBasedCache", "LOCATION": str(BASE_DIR / ".cache")}}
