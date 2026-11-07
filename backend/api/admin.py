@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Alert, Booking, EmailCode, Ride, Sos, User, Vehicle
+from .models import Alert, Booking, Device, EmailCode, Ride, Sos, User, Vehicle
 
 
 @admin.register(User)
@@ -56,3 +56,8 @@ class SosAdmin(admin.ModelAdmin):
 class AlertAdmin(admin.ModelAdmin):
     list_display = ["created", "user", "kind", "title", "read"]
     list_filter = ["kind", "read"]
+
+
+@admin.register(Device)
+class DeviceAdmin(admin.ModelAdmin):
+    list_display = ["user", "platform", "created"]

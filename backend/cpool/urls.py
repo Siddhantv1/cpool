@@ -16,6 +16,7 @@ urlpatterns = [
     path("v1/auth/logout", views.logout),
     path("v1/me", views.me),
     path("v1/me/password", views.change_password),
+    path("v1/me/devices", views.devices),
     path("v1/me/vehicles", views.vehicles),
     path("v1/me/vehicles/<int:vehicle_id>", views.vehicle),
     path("v1/me/vehicles/<int:vehicle_id>/default", views.make_default),

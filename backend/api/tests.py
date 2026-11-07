@@ -159,3 +159,16 @@ class AuthFlowTests(APITestCase):
         self.assertEqual(res.data["code"], "throttled")
         other = self.client.post("/v1/auth/login", {"email": "colleague@perficient.com", "password": "x"}, format="json")
         self.assertEqual(other.data["code"], "not_registered")  # a colleague on the same network isn't locked out
+
+    def test_login_ends_after_60_days_unused(self):  # D3
+        from datetime import timedelta as days_
+        from django.utils import timezone
+        self.register()
+        self.sign_in()
+        self.assertEqual(self.client.get("/v1/me").status_code, 200)
+        User.objects.filter(username=EMAIL).update(last_active=timezone.now() - days_(days=61))
+        res = self.client.get("/v1/me")
+        self.assertEqual((res.status_code, res.data["code"]), (401, "session_expired"))
+        self.assertEqual(self.client.get("/v1/me").status_code, 401)  # the old token is gone
+        self.sign_in()  # signing in again starts a fresh 60 days
+        self.assertEqual(self.client.get("/v1/me").status_code, 200)

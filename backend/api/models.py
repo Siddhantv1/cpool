@@ -14,6 +14,7 @@ class User(AbstractUser):
     gender = models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=16, blank=True)  # shown to the other person only once a seat is confirmed
     default_vehicle = models.ForeignKey("Vehicle", on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    last_active = models.DateTimeField(null=True, blank=True)  # last signed-in use; a login ends after 60 days without one
 
     def active_vehicles(self):
         return self.vehicles.filter(removed=False)
@@ -176,3 +177,15 @@ class Alert(models.Model):
 
     def __str__(self):
         return f"{self.user.username}: {self.title}"
+
+
+class Device(models.Model):
+    """A phone that gets push notifications: its Expo push token. A token belongs to whoever registered it last."""
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
+    token = models.CharField(max_length=200, unique=True)
+    platform = models.CharField(max_length=7, choices=[("android", "Android"), ("ios", "iPhone")])
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} · {self.platform}"

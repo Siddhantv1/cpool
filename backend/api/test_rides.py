@@ -493,3 +493,64 @@ class RideTests(APITestCase):
         self.call(self.guest, "get", "/v1/me/trip")
         alert = self.alerts(self.guest)[0]
         self.assertEqual((alert["kind"], alert["title"]), ("cancelled", "Host’s ride didn’t go ahead"))
+
+    # ---------- push notifications (Expo) ----------
+
+    TOKEN = "ExponentPushToken[abc123]"
+
+    def register(self, user, token=TOKEN, platform="android", status=200):
+        token_obj, _ = Token.objects.get_or_create(user=user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token_obj.key}")
+        res = self.client.put("/v1/me/devices", {"token": token, "platform": platform}, format="json")
+        self.assertEqual(res.status_code, status, res.data)
+        return res.data
+
+    def test_register_and_remove_a_phone(self):
+        from .models import Device
+        self.register(self.guest)
+        self.register(self.guest)  # again on the next app start: still one row
+        self.assertEqual(Device.objects.get().user, self.guest)
+        self.register(self.guest2)  # same phone, now signed in as someone else: the token moves
+        self.assertEqual(Device.objects.get().user, self.guest2)
+        self.assertEqual(self.register(self.guest, token="hello", status=400)["code"], "invalid_push_token")
+        self.client.delete("/v1/me/devices", {"token": self.TOKEN}, format="json")  # signed in as guest: not their phone any more
+        self.assertTrue(Device.objects.exists())
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {Token.objects.get(user=self.guest2).key}")
+        self.client.delete("/v1/me/devices", {"token": self.TOKEN}, format="json")  # its owner can stop it
+        self.assertFalse(Device.objects.exists())
+        self.register(self.guest)
+        self.call(self.guest, "post", "/v1/auth/logout")  # signing out stops that account's pushes
+        self.assertFalse(Device.objects.exists())
+
+    def test_push_messages_for_each_alert(self):
+        from . import push
+        from .models import Alert, Device
+        self.register(self.guest)
+        self.register(self.host, token="ExponentPushToken[host]")
+        ride = self.offer()
+        booking = self.request_seat(self.guest, ride["id"])
+        self.call(self.host, "post", f"/v1/bookings/{booking['id']}/accept")
+        sent = []
+        fake = lambda messages: sent.extend(messages) or {"data": [{"status": "ok"} for _ in messages]}
+
+        request_alert = Alert.objects.get(user=self.host, kind="request")
+        push.send(request_alert.id, post=fake)
+        accepted = Alert.objects.get(user=self.guest, kind="accepted")
+        push.send(accepted.id, post=fake)
+        to_host, to_guest = sent
+        self.assertEqual((to_host["to"], to_host["channelId"], to_host["categoryId"]), ("ExponentPushToken[host]", "requests", "seat-request"))
+        self.assertEqual(to_host["data"]["url"], {"pathname": "/request", "params": {"id": booking["id"]}})
+        self.assertEqual((to_guest["channelId"], to_guest["categoryId"], to_guest["data"]["url"]), ("ride", "ride-accepted", "/accepted"))
+        self.assertEqual(to_guest["data"]["phone"], "+919800000001")  # the host's number: the seat is confirmed
+        self.assertEqual((to_guest["title"], to_guest["priority"]), ("Host accepted your request", "high"))
+
+        dead = lambda messages: {"data": [{"status": "error", "details": {"error": "DeviceNotRegistered"}}]}
+        push.send(accepted.id, post=dead)  # the guest uninstalled Cpool: forget that phone
+        self.assertFalse(Device.objects.filter(user=self.guest).exists())
+
+    def test_push_waits_for_the_saved_change(self):
+        from django.test import override_settings
+        with override_settings(PUSH_ENABLED=True), self.captureOnCommitCallbacks(execute=False) as callbacks:
+            ride = self.offer()
+            self.request_seat(self.guest, ride["id"])
+        self.assertEqual(len(callbacks), 1)  # one push queued for after the database commit, none sent during the request

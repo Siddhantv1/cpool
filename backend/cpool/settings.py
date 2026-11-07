@@ -175,6 +175,11 @@ if os.environ.get('EMAIL_HOST'):
 else:
     MAILERS = {'default': {'BACKEND': 'django.core.mail.backends.console.EmailBackend'}}
 
+# Push notifications through Expo (api/push.py). Off in tests. EXPO_ACCESS_TOKEN only if the Expo project has
+# "enhanced push security" turned on.
+PUSH_ENABLED = os.environ.get("PUSH_ENABLED", "1") == "1" and "test" not in sys.argv
+EXPO_ACCESS_TOKEN = os.environ.get("EXPO_ACCESS_TOKEN", "")
+
 # Tests create many users; the real (deliberately slow) password hasher made them take minutes on a laptop.
 if "test" in sys.argv:
     PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]

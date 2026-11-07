@@ -24,7 +24,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, SimpleRateThrottle
 from rest_framework.views import exception_handler
 
-from .models import ACTIVE_BOOKING, ACTIVE_RIDE, Booking, EmailCode, Location, Ride, User, Vehicle
+from .models import ACTIVE_BOOKING, ACTIVE_RIDE, Booking, Device, EmailCode, Location, Ride, User, Vehicle
 
 CODE_MINUTES = 10
 CODE_TRIES = 5
@@ -213,6 +213,7 @@ def set_password(request):
         user.set_password(password)
         user.save()
         Token.objects.filter(user=user).delete()  # sign out everywhere after a reset
+        user.devices.all().delete()
     return ok()
 
 
@@ -229,6 +230,7 @@ def login(request):
         raise ApiError("account_disabled", "This account is turned off. Contact the Cpool admin.", 403)
     # ponytail: one token per user, shared by all their phones; logging out on one logs out all. Use django-rest-knox if that bites.
     token, _ = Token.objects.get_or_create(user=user)
+    User.objects.filter(pk=user.pk).update(last_active=timezone.now())  # a fresh 60 days
     vehicle = user.vehicle()
     return Response({"token": token.key, "role": user.role, "vehicle": VehicleSerializer(vehicle).data if vehicle else None, "phone": user.phone or None, "gender": user.gender or None})
 
@@ -236,7 +238,9 @@ def login(request):
 @extend_schema(request=None, responses=OK)
 @api_view(["POST"])
 def logout(request):
+    # One token per account, so this signs out every phone: none of them should keep getting pushes either.
     Token.objects.filter(user=request.user).delete()
+    request.user.devices.all().delete()
     return ok()
 
 
@@ -332,7 +336,8 @@ def change_password(request):
     check_password_rules(new, user)
     user.set_password(new)
     user.save()
-    # Sign out other phones: replace the token and hand this phone the new one.
+    # Sign out other phones: replace the token and hand this phone the new one. Phones register for push again on start-up.
+    user.devices.all().delete()
     Token.objects.filter(user=user).delete()
     return ok(token=Token.objects.create(user=user).key)
 
@@ -414,6 +419,7 @@ def delete_account(request):
     with transaction.atomic():
         EmailCode.objects.filter(email=user.email).delete()
         Token.objects.filter(user=user).delete()
+        user.devices.all().delete()
         user.alerts.all().delete()
         Location.objects.filter(user=user).delete()
         user.vehicles.update(removed=True, number="", model="Removed vehicle", colour="")
@@ -422,4 +428,25 @@ def delete_account(request):
         user.role, user.default_vehicle, user.is_active = None, None, False
         user.set_unusable_password()
         user.save()
+    return ok()
+
+
+DeviceIn = body("DeviceIn", {"token": serializers.CharField(help_text="Expo push token, ExponentPushToken[…]"),
+                             "platform": serializers.ChoiceField(["android", "ios"])})
+
+
+@extend_schema(request=DeviceIn, responses=OK)
+@api_view(["PUT", "DELETE"])
+def devices(request):
+    """PUT: this phone wants push notifications (send on every app start and sign-in). DELETE: stop them for this phone."""
+    token = str(request.data.get("token") or "").strip()
+    if not (token.startswith(("ExponentPushToken[", "ExpoPushToken[")) and token.endswith("]") and len(token) <= 200):
+        raise ApiError("invalid_push_token", "That isn’t an Expo push token.")
+    if request.method == "DELETE":
+        Device.objects.filter(token=token, user=request.user).delete()
+        return ok()
+    platform = request.data.get("platform")
+    if platform not in ("android", "ios"):
+        raise ApiError("invalid", "platform must be android or ios.")
+    Device.objects.update_or_create(token=token, defaults={"user": request.user, "platform": platform})
     return ok()
